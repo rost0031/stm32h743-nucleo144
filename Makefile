@@ -41,12 +41,16 @@ TARGET_MAP                  = $(BIN_DIR)/$(PROJECT_NAME).map
 ifeq ($(GNU_ARM),)
 
 # For use with the sysinternals GCC for ARM cortex Mx series chips 
-GNU_ARM = /c/SysGCC/arm-eabi
-ARM_EABI = arm-eabi
+#GNU_ARM = /c/SysGCC/arm-eabi
+#ARM_EABI = arm-eabi
 
 # For use with the GNU with ARM extensions GCC for ARM cortex Mx series chips
-#GNU_ARM = /c/GnuGCC/6_2017-q1-update
+#GNU_ARM = ~/workspace/gcc-arm-none-eabi-6-2017-q1-update
 #ARM_EABI = arm-none-eabi
+
+# For use with the GNU with ARM extensions GCC for ARM cortex Mx series chips
+GNU_ARM = ~/workspace/gcc-arm-none-eabi-9-2019-q4-major
+ARM_EABI = arm-none-eabi
 
 endif
 
@@ -151,11 +155,15 @@ ASFLAGS               = -c $(ASM_CPU) $(ASM_FPU) $(MFLAGS)
 CFLAGS                = -c $(MFLAGS)  \
 						-W $(INCLUDES) $(DEFINES) $(DEP_OPTS)           
 
-LINKFLAGS            += $(MFLAGS) -Wl,--start-group -Wl,--end-group -Wl,-Map,$(TARGET_MAP), \
-                        --specs=nano.specs -Xlinker -static  -Xlinker -z  \
+#LINKFLAGS            += $(MFLAGS) -Wl,--start-group -Wl,--end-group -Wl,-Map,$(TARGET_MAP), \
+#                        --specs=nano.specs -Xlinker -static  -Xlinker -z  \
+#                        -Xlinker muldefs  -Xlinker --defsym=__stack_size__=0x2000 \
+#                        -Xlinker --defsym=__heap_size__=0x0
+LINKFLAGS            += $(MFLAGS)  -Wl,--start-group -Wl,--end-group -Wl,-Map,$(TARGET_MAP) \
+                         --specs=nano.specs -Xlinker -static  -Xlinker -z  \
                         -Xlinker muldefs  -Xlinker --defsym=__stack_size__=0x2000 \
-                        -Xlinker --defsym=__heap_size__=0x2000
-                        
+                        -Xlinker --defsym=__heap_size__=0x0
+                     
 LINKFLAGS            += -Wl,--gc-sections
 
 # Options dependent on build type
@@ -207,10 +215,14 @@ C_SRCS                 += main.c \
                           system_stm32h7xx.c \
                           \
                           stm32h7xx_ll_gpio.c \
-                          stm32h7xx_ll_spi.c
+                          stm32h7xx_ll_rcc.c \
+                          stm32h7xx_ll_spi.c \
+                          \
+                          syscalls.c
                           
 A_OBJS                 = $(patsubst %.s,%.o,$(A_SRCS))
 A_OBJS_EXT             = $(addprefix $(BIN_DIR)/, $(A_OBJS))
+A_DEPS_EXT             = $(patsubst %.o, %.d, $(A_OBJS_EXT))
 
 C_OBJS                 = $(patsubst %.c,%.o,$(C_SRCS))
 C_OBJS_EXT             = $(addprefix $(BIN_DIR)/, $(C_OBJS))
@@ -227,8 +239,6 @@ endif
 #-----------------------------------------------------------------------------
 # This sets a dependency between generating the proto files before compiling the
 # rest of the source, allowing multicore compiles
-$(A_OBJS_EXT) : $(PB_OBJS)
-$(C_OBJS_EXT) : $(PB_OBJS)
 
 .PHONY: all clean $(BIN_DIR) show clean_exe
 .DEFAULT_GOAL := all
@@ -280,6 +290,9 @@ clean_exe:
 show:
 	@echo CONF             = $(CONF)
 	@echo BIN_DIR          = $(BIN_DIR)
+	@echo A_SRCS           = $(A_SRCS)
+	@echo A_OBJS_EXT       = $(A_OBJS_EXT)
+	@echo A_DEPS_EXT       = $(A_DEPS_EXT)
 	@echo C_SRCS           = $(C_SRCS)
 	@echo C_OBJS_EXT       = $(C_OBJS_EXT)
 	@echo C_DEPS_EXT       = $(C_DEPS_EXT)
