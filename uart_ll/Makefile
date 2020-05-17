@@ -26,7 +26,7 @@ NOW                        := $(shell date +%Y%m%d%H%M%S | tr ' :' '__')
 
 # Output file basename (should be the same as the directory name)
 TARGET                     := stm32h743-nucleo144
-PROJECT_BASE               := startup-demo
+PROJECT_BASE               := uart_ll
 PROJECT_NAME               := $(PROJECT_BASE)-$(TARGET)
 TARGET_HEX                  = $(BIN_DIR)/$(PROJECT_NAME).hex
 TARGET_ELF                  = $(BIN_DIR)/$(PROJECT_NAME).elf
@@ -75,7 +75,7 @@ ECHO   := echo
 #-----------------------------------------------------------------------------
 
 # Top level directories
-TOP_DIR                 = .
+TOP_DIR                 = ../.
 
 CMSIS_DIR               = $(TOP_DIR)/CMSIS
 CMSIS_INC_DIR           = $(CMSIS_DIR)/Include
@@ -90,7 +90,7 @@ BRD_DRV_DIR             = $(DEV_DRV_DIR)/STM32H7xx_Nucleo_144
 BRD_DRV_INC_DIR         = $(BRD_DRV_DIR)/inc
 BRD_DRV_SRC_DIR         = $(BRD_DRV_DIR)/src
 
-PROJ_DIR                = $(TOP_DIR)
+PROJ_DIR                = $(TOP_DIR)\$(PROJECT_BASE)
 
 
 # version.mk also must contain the version number of components
@@ -101,6 +101,7 @@ PROJ_DIR                = $(TOP_DIR)
 #-----------------------------------------------------------------------------
 VPATH                  += \
                           $(PROJ_DIR) \
+                          $(TOP_DIR) \
                           $(DEV_DRV_SRC_DIR) \
                           $(BRD_DRV_SRC_DIR)                         
                          
@@ -109,6 +110,7 @@ VPATH                  += \
 #-----------------------------------------------------------------------------
 INCLUDES               += \
                          -I$(PROJ_DIR) \
+                         -I$(TOP_DIR) \
                          -I$(CMSIS_INC_DIR) \
                          -I$(CMSIS_DEV_INC_DIR) \
                          -I$(DEV_DRV_INC_DIR) \
@@ -190,7 +192,7 @@ else                     # default Debug configuration .......................
 endif
                      
 # Linker script and path						
-LD_SCRIPT            := $(PROJ_DIR)/STM32H743ZITx_FLASH.ld -static
+LD_SCRIPT            := $(TOP_DIR)/STM32H743ZITx_FLASH.ld -static
 
 #-----------------------------------------------------------------------------
 # DEFINES
