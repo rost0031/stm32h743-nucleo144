@@ -16,15 +16,23 @@
  *
  ******************************************************************************
  */
+#define USE_FULL_LL_DRIVER
+#define RCC
+//#define USART3
+//#define GPIOD
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
+#include "stm32h7xx.h"
+#include "stm32h743xx.h"
 #include "stm32h7xx_ll_bus.h"
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_pwr.h"
 #include "stm32h7xx_ll_rcc.h"
 #include "stm32h7xx_ll_spi.h"
 #include "stm32h7xx_ll_utils.h"
+#include "stm32h7xx_ll_usart.h"
 
 /** @addtogroup STM32H7xx_LL_Examples
  * @{
@@ -36,6 +44,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 uint32_t timeout = 0;
@@ -95,9 +104,74 @@ int main(void)
     /* Communication done with success : Turn the GREEN LED on */
     LL_GPIO_SetOutputPin(LED1_GPIO_PORT, LED1_PIN);
 
+    /* Configure USART3 for debug output. Configure pins and uart peripheral */
+
+    /* Enable PORTD clock for GPIO port D */
+    LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOD);
+
+    /* Configure PD8 as Tx Pin : Alternate function 7, High Speed, Push pull, Pull up */
+    LL_GPIO_SetPinMode(GPIOD, LL_GPIO_PIN_8, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetAFPin_8_15(GPIOD, LL_GPIO_PIN_8, LL_GPIO_AF_7);
+    LL_GPIO_SetPinSpeed(GPIOD, LL_GPIO_PIN_8, LL_GPIO_SPEED_FREQ_HIGH);
+    LL_GPIO_SetPinOutputType(GPIOD, LL_GPIO_PIN_8, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinPull(GPIOD, LL_GPIO_PIN_8, LL_GPIO_PULL_UP);
+
+    /* Configure PD9 as Rx Pin : Alternate function 7, High Speed, Push pull, Pull up */
+    LL_GPIO_SetPinMode(GPIOD, LL_GPIO_PIN_9, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetAFPin_8_15(GPIOD, LL_GPIO_PIN_9, LL_GPIO_AF_7);
+    LL_GPIO_SetPinSpeed(GPIOD, LL_GPIO_PIN_9, LL_GPIO_SPEED_FREQ_HIGH);
+    LL_GPIO_SetPinOutputType(GPIOD, LL_GPIO_PIN_9, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinPull(GPIOD, LL_GPIO_PIN_9, LL_GPIO_PULL_UP);
+
+    /* Enable the peripheral clock of UART and set source */
+//    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
+//    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE);
+
+    LL_USART_ClockInitTypeDef usartClkInit = {0};
+    LL_USART_ClockStructInit(&usartClkInit);
+    usartClkInit.ClockOutput = LL_USART_CLOCK_ENABLE;
+    usartClkInit.ClockPhase  = LL_USART_PHASE_1EDGE;
+    usartClkInit.ClockPolarity = LL_USART_POLARITY_HIGH;
+    usartClkInit.LastBitClockPulse = LL_USART_LASTCLKPULSE_OUTPUT;
+    LL_USART_ClockInit(USART3, &usartClkInit);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
+    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1);
+
+    uint32_t Periphclk = LL_RCC_GetUSARTClockFreq(USART3);
+
+    LL_USART_InitTypeDef usartInit = {0};
+    usartInit.BaudRate            = 115200U;
+	usartInit.DataWidth           = LL_USART_DATAWIDTH_8B;
+    usartInit.StopBits	          = LL_USART_STOPBITS_1;
+    usartInit.Parity              = LL_USART_PARITY_NONE;
+    usartInit.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+    usartInit.TransferDirection	  = LL_USART_DIRECTION_TX_RX;
+    usartInit.OverSampling        = LL_USART_OVERSAMPLING_16;
+    usartInit.PrescalerValue      = LL_USART_PRESCALER_DIV1;
+    LL_USART_Init( USART3, &usartInit);
+    LL_USART_Enable( USART3 );
+
+    const uint8_t buffer[25] = "Hello World\r\n";
     /* Infinite loop */
-    while (1)
-    {
+    while (1) {
+#if 0
+    	for( uint8_t i = 0; i < 13; i++ ) {
+			/* Wait for TXE flag to be raised */
+			while (!LL_USART_IsActiveFlag_TXE(USART3))
+			{
+
+			}
+
+			/* Write character in Transmit Data register.
+			   TXE flag is cleared by writing data in TDR register */
+			LL_USART_TransmitData8(USART3, buffer[i]);
+    	}
+#else
+    	for(uint8_t i = 0; i < 0xff; i++) {
+			while (!LL_USART_IsActiveFlag_TXE(USART3)) {}
+    		LL_USART_TransmitData8(USART3, i);
+    	}
+#endif
     }
 }
 

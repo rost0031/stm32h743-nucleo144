@@ -165,6 +165,7 @@ LINKFLAGS            += $(MFLAGS)  -Wl,--start-group -Wl,--end-group -Wl,-Map,$(
                         -Xlinker --defsym=__heap_size__=0x0
                      
 LINKFLAGS            += -Wl,--gc-sections
+DEFINES              += -DUSE_FULL_LL_DRIVER -DSTM32H743xx
 
 # Options dependent on build type
 ifeq (rel, $(CONF))       # Release configuration ............................
@@ -217,6 +218,7 @@ C_SRCS                 += main.c \
                           stm32h7xx_ll_gpio.c \
                           stm32h7xx_ll_rcc.c \
                           stm32h7xx_ll_spi.c \
+                          stm32h7xx_ll_usart.c \
                           \
                           syscalls.c
                           
