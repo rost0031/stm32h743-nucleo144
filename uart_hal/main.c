@@ -1,25 +1,30 @@
+/*------------------------------------------------------------------------------
+ -------------------------------------------------------------------------------
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ --                       THIS FILE IS UNCLASSIFIED                           --
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ -------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------*/
+
 /**
- ******************************************************************************
- * @file    SPI_FullDuplex_ComIT/Src/main.c
- * @author  MCD Application Team
- * @brief   Main program body through the LL API
- ******************************************************************************
- * @attention
+ * @file    main.c
+ * @brief   Main for UART HAL example
  *
- * <h2><center>&copy; Copyright (c) 2018 STMicroelectronics.
- * All rights reserved.</center></h2>
+ * Copyright 2020, Northrop Grumman Innovation Systems, Inc.
+ * All other rights reserved.
  *
- * This software component is licensed by ST under BSD 3-Clause license,
- * the "License"; You may not use this file except in compliance with the
- * License. You may obtain a copy of the License at:
- *                        opensource.org/licenses/BSD-3-Clause
- *
- ******************************************************************************
+ * NORTHROP GRUMMAN PROPRIETARY LEVEL I
+ * This information contains proprietary data and should not be released or
+ * distributed without the express written approval of Northrop Grumman
+ * Innovation Systems, Inc. This document contains private or privileged
+ * information and/or trade secrets, which is/are disclosed in confidence.
+ * This information may be used, duplicated, or disclosed only to the extent as
+ * specifically authorized in writing by Northrop Grumman Innovation Systems,
+ * Inc.
  */
-#define USE_FULL_HAL_DRIVER
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+
 #include <stdint.h>
 #include <string.h>
 #include "stm32h7xx.h"
@@ -31,22 +36,22 @@
 #include "stm32h7xx_hal_uart.h"
 #include "stm32h7xx_nucleo_144.h"
 
+/* Compile-time called macros ------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define USE_FULL_HAL_DRIVER
 
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+/* Private macros ------------------------------------------------------------*/
+/* Private variables and Local objects ---------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+/**
+ * @brief
+ */
 static void     SystemClock_Config(void);
 static void     Error_Handler(void);
 
-/* Private functions ---------------------------------------------------------*/
-
-/**
- * @brief  Main program
- * @param  None
- * @retval None
- */
+/* Public and Exported functions ---------------------------------------------*/
+/******************************************************************************/
 int main(void)
 {
     /* STM32H7xx HAL library initialization:
@@ -57,29 +62,20 @@ int main(void)
            handled in milliseconds basis.
          - Set NVIC Group Priority to 4
          - Low Level Initialization
-       */
-	HAL_Init();
+     */
+    HAL_Init();
 
-	/* Configure the system clock to 400 MHz */
-	SystemClock_Config();
+    /* Configure the system clock to 400 MHz */
+    SystemClock_Config();
 
-	/* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
-	BSP_LED_Init(LED1);
-
-
+    /* Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
+    BSP_LED_Init(LED1);
 
     /* Communication done with success : Turn the GREEN LED on */
     BSP_LED_On(LED1);
 
     /*##-1- Configure the UART peripheral ######################################*/
     /* Put the USART peripheral in the Asynchronous mode (UART Mode) */
-    /* UART configured as follows:
-          - Word Length = 8 Bits
-          - Stop Bit = One Stop bit
-          - Parity = None
-          - BaudRate = 115200 baud
-          - Hardware flow control disabled (RTS and CTS signals) */
-
     UART_HandleTypeDef UartHandle = {0};
     UartHandle.Instance          = USART3;
 
@@ -92,40 +88,24 @@ int main(void)
     UartHandle.Init.OverSampling = UART_OVERSAMPLING_16;
     UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
-    if(HAL_UART_DeInit(&UartHandle) != HAL_OK)
-    {
-    	Error_Handler();
-    }
-    if(HAL_UART_Init(&UartHandle) != HAL_OK)
-    {
-    	Error_Handler();
+    if (HAL_OK != HAL_UART_DeInit(&UartHandle)) {
+        Error_Handler();
     }
 
-    const uint8_t buffer[25] = "Hello World\r\n";
+    if (HAL_OK != HAL_UART_Init(&UartHandle)) {
+        Error_Handler();
+    }
+
+    const char buffer[25] = "Hello World\r\n";
     /* Infinite loop */
     while (1) {
-#if 0
-    	for( uint8_t i = 0; i < 13; i++ ) {
-			/* Wait for TXE flag to be raised */
-			while (!LL_USART_IsActiveFlag_TXE(USART3))
-			{
-
-			}
-
-			/* Write character in Transmit Data register.
-			   TXE flag is cleared by writing data in TDR register */
-			LL_USART_TransmitData8(USART3, buffer[i]);
-    	}
-#else
-
-    	if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, strlen(buffer), 5000))
-    	{
-    		Error_Handler();
-    	}
-#endif
+        if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, strlen(buffer), 5000))  {
+            Error_Handler();
+        }
     }
 }
 
+/* Private functions ---------------------------------------------------------*/
 /**
  * @brief  System Clock Configuration
  *         The system Clock is configured as follow :
@@ -150,90 +130,81 @@ int main(void)
  */
 static void SystemClock_Config(void)
 {
-	RCC_ClkInitTypeDef RCC_ClkInitStruct;
-	RCC_OscInitTypeDef RCC_OscInitStruct;
-	HAL_StatusTypeDef ret = HAL_OK;
+    RCC_ClkInitTypeDef RCC_ClkInitStruct;
+    RCC_OscInitTypeDef RCC_OscInitStruct;
+    HAL_StatusTypeDef ret = HAL_OK;
 
-	/*!< Supply configuration update enable */
-	HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+    /*!< Supply configuration update enable */
+    HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
 
-	/* The voltage scaling allows optimizing the power consumption when the device is
+    /* The voltage scaling allows optimizing the power consumption when the device is
 	     clocked below the maximum system frequency, to update the voltage scaling value
 	     regarding system frequency refer to product datasheet.  */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-	while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+    while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
-	/* Enable HSE Oscillator and activate PLL with HSE as source */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-	RCC_OscInitStruct.HSIState = RCC_HSI_OFF;
-	RCC_OscInitStruct.CSIState = RCC_CSI_OFF;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    /* Enable HSE Oscillator and activate PLL with HSE as source */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+    RCC_OscInitStruct.HSIState = RCC_HSI_OFF;
+    RCC_OscInitStruct.CSIState = RCC_CSI_OFF;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 
-	RCC_OscInitStruct.PLL.PLLM = 4;
-	RCC_OscInitStruct.PLL.PLLN = 400;
-	RCC_OscInitStruct.PLL.PLLFRACN = 0;
-	RCC_OscInitStruct.PLL.PLLP = 2;
-	RCC_OscInitStruct.PLL.PLLR = 2;
-	RCC_OscInitStruct.PLL.PLLQ = 4;
+    RCC_OscInitStruct.PLL.PLLM = 4;
+    RCC_OscInitStruct.PLL.PLLN = 400;
+    RCC_OscInitStruct.PLL.PLLFRACN = 0;
+    RCC_OscInitStruct.PLL.PLLP = 2;
+    RCC_OscInitStruct.PLL.PLLR = 2;
+    RCC_OscInitStruct.PLL.PLLQ = 4;
 
-	RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
-	RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
-	ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
-	if(ret != HAL_OK)
-	{
-		Error_Handler();
-	}
+    RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+    RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
+    ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
+    if(ret != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-	/* Select PLL as system clock source and configure  bus clocks dividers */
-	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_D1PCLK1 | RCC_CLOCKTYPE_PCLK1 | \
-			RCC_CLOCKTYPE_PCLK2  | RCC_CLOCKTYPE_D3PCLK1);
+    /* Select PLL as system clock source and configure  bus clocks dividers */
+    RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_D1PCLK1 | RCC_CLOCKTYPE_PCLK1 | \
+            RCC_CLOCKTYPE_PCLK2  | RCC_CLOCKTYPE_D3PCLK1);
 
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
-	RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
-	RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
-	ret = HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4);
-	if(ret != HAL_OK)
-	{
-		Error_Handler();
-	}
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
+    RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
+    ret = HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4);
+    if(ret != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-	/*activate CSI clock mondatory for I/O Compensation Cell*/
-	__HAL_RCC_CSI_ENABLE() ;
+    /*activate CSI clock mondatory for I/O Compensation Cell*/
+    __HAL_RCC_CSI_ENABLE() ;
 
-	/* Enable SYSCFG clock mondatory for I/O Compensation Cell */
-	__HAL_RCC_SYSCFG_CLK_ENABLE() ;
+    /* Enable SYSCFG clock mondatory for I/O Compensation Cell */
+    __HAL_RCC_SYSCFG_CLK_ENABLE() ;
 
-	/* Enables the I/O Compensation Cell */
-	HAL_EnableCompensationCell();
+    /* Enables the I/O Compensation Cell */
+    HAL_EnableCompensationCell();
 }
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @param  None
+ * @retval None
+ */
 static void Error_Handler(void)
 {
-  /* Turn LED3 on */
-  BSP_LED_Off(LED1);
-  while(1)
-  {
-  }
+    /* Turn LED3 on */
+    BSP_LED_Off(LED1);
+    while(1)
+    {
+    }
 }
 
-/**
- * @}
- */
-
-/**
- * @}
- */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

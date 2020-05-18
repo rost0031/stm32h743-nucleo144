@@ -1,144 +1,105 @@
+/*------------------------------------------------------------------------------
+ -------------------------------------------------------------------------------
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ --                       THIS FILE IS UNCLASSIFIED                           --
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ -------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------*/
+
 /**
-  ******************************************************************************
-  * @file    SPI_FullDuplex_ComIT/Src/stm32h7xx_it.c
-  * @author  MCD Application Team
-  * @brief   Main Interrupt Service Routines.
-  *          This file provides template for all exceptions handler and
-  *          peripherals interrupt service routine.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2018 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ * @file    stm32h7xx_it.c
+ * @brief   STM32 interrupts for UART HAL example
+ *
+ * Copyright 2020, Northrop Grumman Innovation Systems, Inc.
+ * All other rights reserved.
+ *
+ * NORTHROP GRUMMAN PROPRIETARY LEVEL I
+ * This information contains proprietary data and should not be released or
+ * distributed without the express written approval of Northrop Grumman
+ * Innovation Systems, Inc. This document contains private or privileged
+ * information and/or trade secrets, which is/are disclosed in confidence.
+ * This information may be used, duplicated, or disclosed only to the extent as
+ * specifically authorized in writing by Northrop Grumman Innovation Systems,
+ * Inc.
+ */
+
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_it.h"
-#include "main.h"
+#include "stm32h7xx_hal.h"
 
-/** @addtogroup STM32H7xx_LL_Examples
-  * @{
-  */
-
-/** @addtogroup SPI_FullDuplex_ComIT
-  * @{
-  */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
+/* Private typedefs ----------------------------------------------------------*/
+/* Private defines -----------------------------------------------------------*/
+/* Private macros ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-
+/* Public and Exported functions ---------------------------------------------*/
 /******************************************************************************/
 /*            Cortex-M7 Processor Exceptions Handlers                         */
 /******************************************************************************/
 
-
-/**
-  * @brief   This function handles NMI exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void NMI_Handler(void)
 {
+
 }
 
-/**
-  * @brief  This function handles Hard Fault exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1)
+    {
+    }
 }
 
-/**
-  * @brief  This function handles Memory Manage exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void MemManage_Handler(void)
 {
-  /* Go to infinite loop when Memory Manage exception occurs */
-  while (1)
-  {
-  }
+    /* Go to infinite loop when Memory Manage exception occurs */
+    while (1)
+    {
+    }
 }
 
-/**
-  * @brief  This function handles Bus Fault exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void BusFault_Handler(void)
 {
-  /* Go to infinite loop when Bus Fault exception occurs */
-  while (1)
-  {
-  }
+    /* Go to infinite loop when Bus Fault exception occurs */
+    while (1)
+    {
+    }
 }
 
-/**
-  * @brief  This function handles Usage Fault exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void UsageFault_Handler(void)
 {
-  /* Go to infinite loop when Usage Fault exception occurs */
-  while (1)
-  {
-  }
+    /* Go to infinite loop when Usage Fault exception occurs */
+    while (1)
+    {
+    }
 }
 
-/**
-  * @brief  This function handles SVCall exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void SVC_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles Debug Monitor exception.
-  * @param  None
-  * @retval None
-  */
+
+/******************************************************************************/
 void DebugMon_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles PendSVC exception.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void PendSV_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles SysTick Handler.
-  * @param  None
-  * @retval None
-  */
+/******************************************************************************/
 void SysTick_Handler(void)
 {
-	HAL_IncTick();
+    HAL_IncTick();
 }
 
 
@@ -150,13 +111,6 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 
+/* Private functions ---------------------------------------------------------*/
 
-/**
-  * @}
-  */
 
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

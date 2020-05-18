@@ -1,21 +1,27 @@
+/*------------------------------------------------------------------------------
+ -------------------------------------------------------------------------------
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ --                       THIS FILE IS UNCLASSIFIED                           --
+ --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
+ -------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------*/
+
 /**
-  ******************************************************************************
-  * @file    stm32h7xx_hal_conf.h
-  * @author  MCD Application Team
-  * @brief   HAL configuration file.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */ 
+ * @file    stm32h7xx_hal_conf.h
+ * @brief   Configuration for STM32 HAL library
+ *
+ * Copyright 2020, Northrop Grumman Innovation Systems, Inc.
+ * All other rights reserved.
+ *
+ * NORTHROP GRUMMAN PROPRIETARY LEVEL I
+ * This information contains proprietary data and should not be released or
+ * distributed without the express written approval of Northrop Grumman
+ * Innovation Systems, Inc. This document contains private or privileged
+ * information and/or trade secrets, which is/are disclosed in confidence.
+ * This information may be used, duplicated, or disclosed only to the extent as
+ * specifically authorized in writing by Northrop Grumman Innovation Systems,
+ * Inc.
+ */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32H7xx_HAL_CONF_H
@@ -25,8 +31,8 @@
  extern "C" {
 #endif
 
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
+ /* Includes ------------------------------------------------------------------*/
+ /* Exported defines ----------------------------------------------------------*/
 
 /* ########################## Module Selection ############################## */
 /**
@@ -404,8 +410,8 @@
 #ifdef HAL_HCD_MODULE_ENABLED
  #include "stm32h7xx_hal_hcd.h"
 #endif /* HAL_HCD_MODULE_ENABLED */
-   
-/* Exported macro ------------------------------------------------------------*/
+
+/* Exported macros -----------------------------------------------------------*/
 #ifdef  USE_FULL_ASSERT
 /**
   * @brief  The assert_param macro is used for function's parameters check.
@@ -422,11 +428,15 @@
   #define assert_param(expr) ((void)0U)
 #endif /* USE_FULL_ASSERT */
 
+/* Exported types ------------------------------------------------------------*/
+/* Exported constants --------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __STM32H7xx_HAL_CONF_H */
+#endif                                              /* __STM32H7xx_HAL_CONF_H */
  
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
