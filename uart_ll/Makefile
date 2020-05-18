@@ -90,7 +90,7 @@ BRD_DRV_DIR             = $(DEV_DRV_DIR)/STM32H7xx_Nucleo_144
 BRD_DRV_INC_DIR         = $(BRD_DRV_DIR)/inc
 BRD_DRV_SRC_DIR         = $(BRD_DRV_DIR)/src
 
-PROJ_DIR                = $(TOP_DIR)\$(PROJECT_BASE)
+PROJ_DIR                = $(TOP_DIR)/$(PROJECT_BASE)
 
 
 # version.mk also must contain the version number of components
@@ -157,10 +157,6 @@ ASFLAGS               = -c $(ASM_CPU) $(ASM_FPU) $(MFLAGS)
 CFLAGS                = -c $(MFLAGS)  \
 						-W $(INCLUDES) $(DEFINES) $(DEP_OPTS)           
 
-#LINKFLAGS            += $(MFLAGS) -Wl,--start-group -Wl,--end-group -Wl,-Map,$(TARGET_MAP), \
-#                        --specs=nano.specs -Xlinker -static  -Xlinker -z  \
-#                        -Xlinker muldefs  -Xlinker --defsym=__stack_size__=0x2000 \
-#                        -Xlinker --defsym=__heap_size__=0x0
 LINKFLAGS            += $(MFLAGS)  -Wl,--start-group -Wl,--end-group -Wl,-Map,$(TARGET_MAP) \
                          --specs=nano.specs -Xlinker -static  -Xlinker -z  \
                         -Xlinker muldefs  -Xlinker --defsym=__stack_size__=0x2000 \
