@@ -212,6 +212,7 @@ A_SRCS                 += startup_stm32h743xx.s
 C_SRCS                 += main.c \
                           stm32h7xx_it.c \
                           system_stm32h7xx.c \
+                          stm32h7xx_hal_msp.c \
                           \
                           stm32h7xx_hal.c \
                           stm32h7xx_hal_cortex.c \
@@ -220,7 +221,7 @@ C_SRCS                 += main.c \
                           stm32h7xx_hal_pwr_ex.c \
                           stm32h7xx_hal_rcc.c \
                           stm32h7xx_hal_rcc_ex.c \
-                          stm32h7xx_hal_usart.c \
+                          stm32h7xx_hal_uart.c \
                           \
                           stm32h7xx_nucleo_144.c \
                           \
