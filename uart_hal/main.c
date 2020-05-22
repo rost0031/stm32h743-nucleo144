@@ -102,6 +102,7 @@ int main(void)
         if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, strlen(buffer), 5000))  {
             Error_Handler();
         }
+        printf("Hello from printf\r\n");
     }
 }
 
