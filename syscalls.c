@@ -41,6 +41,10 @@
 
 #include "cmsis_gcc.h"
 
+#include "stm32h7xx.h"
+#include "stm32h743xx.h"
+#include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal_uart.h"
 //#include "uart.h"
 //#include "board_defs.h"
 
@@ -51,15 +55,15 @@
 /* Private typedefs ----------------------------------------------------------*/
 /* Private defines -----------------------------------------------------------*/
 #ifndef STDOUT_USART
-//#define STDOUT_USART LPUART1
+#define STDOUT_USART USART3
 #endif
 
 #ifndef STDERR_USART
-//#define STDERR_USART LPUART1
+#define STDERR_USART USART3
 #endif
 
 #ifndef STDIN_USART
-//#define STDIN_USART LPUART1
+#define STDIN_USART USART3
 #endif
 
 #undef errno
@@ -69,7 +73,7 @@
 /* Private function prototypes -----------------------------------------------*/
 //static char *heap_end;
 extern int errno;
-//extern int  _end;
+extern int  _end;
 
 /* Private functions ---------------------------------------------------------*/
 /* Public functions ----------------------------------------------------------*/
@@ -82,21 +86,20 @@ extern int errno;
  *
  * @return  NULL
  */
-//caddr_t _sbrk(int incr)
-//{
-//    static unsigned char *heap = NULL;
-//    if (heap == NULL) {
-//        heap = (unsigned char *)&_end;
-//    }
-//
-//    heap += incr;
-//
-//    /* Returning NULL causes a hard fault any time this function is called
-//     * That's a good thing since we don't want to use any dynamic memory allocation
-//     */
-//    return NULL;
-//    /*return ((caddr_t) prev_heap);*/
-//}
+caddr_t _sbrk(int incr)
+{
+    static unsigned char *heap = NULL;
+    if (heap == NULL) {
+        heap = (unsigned char *)&_end;
+    }
+
+    heap += incr;
+
+    /* Returning NULL causes a hard fault any time this function is called
+     * That's a good thing since we don't want to use any dynamic memory allocation */
+    return NULL;
+    /*return ((caddr_t) prev_heap);*/
+}
 
 /**
  * @brief   Exit a program without cleaning up files.
@@ -147,11 +150,11 @@ extern int errno;
  *
  * @return  -1
  */
-//int _close(int file)
-//{
-//    (void)file;
-//    return(-1);
-//}
+int _close(int file)
+{
+    (void)file;
+    return(-1);
+}
 
 /**
  * @brief   Status of an open file.
@@ -164,12 +167,12 @@ extern int errno;
  *
  * @return  0
  */
-//int _fstat(int file, struct stat *st)
-//{
-//    (void)file;
-//    st->st_mode = S_IFCHR;
-//    return(0);
-//}
+int _fstat(int file, struct stat *st)
+{
+    (void)file;
+    st->st_mode = S_IFCHR;
+    return(0);
+}
 
 /**
  * @brief   Query whether output stream is a terminal.
@@ -181,11 +184,11 @@ extern int errno;
  *
  * @return  1
  */
-//int _isatty(int file)
-//{
-//    (void)file;
-//    return(1);
-//}
+int _isatty(int file)
+{
+    (void)file;
+    return(1);
+}
 
 /**
  * @brief   Set position in a file.
@@ -194,13 +197,13 @@ extern int errno;
  *
  * @return  0
  */
-//int _lseek(int file, int ptr, int dir)
-//{
-//    (void)file;
-//    (void)ptr;
-//    (void)dir;
-//    return(0);
-//}
+int _lseek(int file, int ptr, int dir)
+{
+    (void)file;
+    (void)ptr;
+    (void)dir;
+    return(0);
+}
 
 /**
  * @brief   Read from a file
@@ -249,8 +252,8 @@ int _write(int file, char *ptr, int len) {
         case STDOUT_FILENO: /* stdout */
         case STDERR_FILENO: /* stderr */
                 while( len-- ) {
-//                    while( !( STDERR_USART->STAT & LPUART_STAT_TDRE_MASK ) ) {}
-//                    STDERR_USART->DATA = *ptr++;
+                    while( !( STDERR_USART->ISR & UART_FLAG_TC ) ) {}
+                    STDERR_USART->TDR = *ptr++;
                 }
             break;
         default:

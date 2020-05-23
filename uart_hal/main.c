@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "stm32h7xx.h"
 #include "stm32h743xx.h"
 #include "stm32h7xx_hal.h"
@@ -96,12 +97,20 @@ int main(void)
         Error_Handler();
     }
 
-    const char buffer[25] = "Hello World\r\n";
+    const char buffer[25]  = "Hello World from buffer\r\n";
+    const char buffer1[26] = "Hello World from buffer1\r\n";
     /* Infinite loop */
     while (1) {
-        if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, strlen(buffer), 5000))  {
+        if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, sizeof(buffer), 5000))  {
             Error_Handler();
         }
+
+        for (uint8_t i = 0; i < sizeof(buffer1); i++ ) {
+            while( RESET  == (UartHandle.Instance->ISR & UART_FLAG_TC) ) {}
+            UartHandle.Instance->TDR = (buffer1[i] & 0xFFU);
+        }
+
+
         printf("Hello from printf\r\n");
     }
 }
