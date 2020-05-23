@@ -18,8 +18,8 @@
  */
 #define USE_FULL_LL_DRIVER
 #define RCC
-//#define USART3
-//#define GPIOD
+#define USART3
+#define GPIOD
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -128,14 +128,14 @@ int main(void)
 //    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE);
 
     LL_USART_ClockInitTypeDef usartClkInit = {0};
-    LL_USART_ClockStructInit(&usartClkInit);
-    usartClkInit.ClockOutput = LL_USART_CLOCK_ENABLE;
-    usartClkInit.ClockPhase  = LL_USART_PHASE_1EDGE;
-    usartClkInit.ClockPolarity = LL_USART_POLARITY_HIGH;
-    usartClkInit.LastBitClockPulse = LL_USART_LASTCLKPULSE_OUTPUT;
-    LL_USART_ClockInit(USART3, &usartClkInit);
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
+//    LL_USART_ClockStructInit(&usartClkInit);
+//    usartClkInit.ClockOutput = LL_USART_CLOCK_ENABLE;
+//    usartClkInit.ClockPhase  = LL_USART_PHASE_1EDGE;
+//    usartClkInit.ClockPolarity = LL_USART_POLARITY_HIGH;
+//    usartClkInit.LastBitClockPulse = LL_USART_LASTCLKPULSE_OUTPUT;
+//    LL_USART_ClockInit(USART3, &usartClkInit);
     LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
 
     uint32_t Periphclk = LL_RCC_GetUSARTClockFreq(USART3);
 
