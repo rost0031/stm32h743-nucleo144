@@ -44,6 +44,8 @@
 /* Private define ------------------------------------------------------------*/
 #define USE_FULL_HAL_DRIVER
 
+#define CACHE_ENABLED
+
 /* Private macros ------------------------------------------------------------*/
 /* Private variables and Local objects ---------------------------------------*/
 
@@ -74,10 +76,12 @@ int main(void)
     HAL_Init();
 
     SCB_EnableICache();
-    /* Enabling Data cache screws up DMA pretty badly even with manual cache invalidation. */
-//    SCB_EnableDCache();
-    SCB_DisableDCache();
 
+#ifdef CACHE_ENABLED
+    SCB_EnableDCache();
+#else
+    SCB_DisableDCache();
+#endif
     /* Configure the system clock to 400 MHz */
     SystemClock_Config();
 
@@ -123,6 +127,11 @@ int main(void)
         BSP_LED_On(LED2);
         HAL_StatusTypeDef status = HAL_OK;
 //        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+
+#ifdef CACHE_ENABLED
+        SCB_CleanDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+#endif
+
         snprintf((char *)buffer, sizeof(buffer), "Hello World from buffer %03d with DMA\n", counter++);
         UartReady = RESET; /* Reset flag before transmitting */
 //        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
