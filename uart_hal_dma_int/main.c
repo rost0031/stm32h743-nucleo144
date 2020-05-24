@@ -74,7 +74,7 @@ int main(void)
     HAL_Init();
 
     SCB_EnableICache();
-
+    /* Enabling Data cache screws up DMA pretty badly even with manual cache invalidation. */
 //    SCB_EnableDCache();
     SCB_DisableDCache();
 
@@ -83,6 +83,8 @@ int main(void)
 
     /* Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
     BSP_LED_Init(LED1);
+    BSP_LED_Init(LED2);
+    BSP_LED_Init(LED3);
 
     /* Communication done with success : Turn the GREEN LED on */
     BSP_LED_On(LED1);
@@ -109,36 +111,30 @@ int main(void)
         Error_Handler();
     }
 
-    __attribute__((aligned(32))) const char buffer[35]  = "Hello World from buffer with DMA\r\n";
+    __attribute__((aligned(32))) uint8_t buffer[64]  = {0};
+
+    uint8_t counter = 0;
 
     /* Infinite loop */
     while (1) {
-//        if(HAL_OK != HAL_UART_Transmit(&UartHandle, (uint8_t*)buffer, sizeof(buffer), 5000))  {
-//            Error_Handler();
-//        }
-
-        /* The board sends the message and expects to receive it back */
-
-        /*##-2- Start the transmission process #####################################*/
-        /* While the UART in reception process, user can transmit data through
-           "aTxBuffer" buffer */
 
         /* Invalidate cache prior to access by CPU */
-//        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
 
-        if (HAL_OK != HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)buffer, sizeof(buffer))) {
-            Error_Handler();
+        BSP_LED_On(LED2);
+        HAL_StatusTypeDef status = HAL_OK;
+//        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+        snprintf((char *)buffer, sizeof(buffer), "Hello World from buffer %03d with DMA\n", counter++);
+        UartReady = RESET; /* Reset flag before transmitting */
+//        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)buffer, strlen((const char *)buffer)))) {
+            if (HAL_ERROR == status) {
+                Error_Handler();
+            } else {
+                BSP_LED_Off(LED1);
+            }
         }
 
         while (SET != UartReady ) {}    /* Wait for DMA to complete with dump polling for now */
-
-//        for (uint8_t i = 0; i < sizeof(buffer1); i++ ) {
-//            while( RESET  == (UartHandle.Instance->ISR & UART_FLAG_TC) ) {}
-//            UartHandle.Instance->TDR = (buffer1[i] & 0xFFU);
-//        }
-
-
-//        printf("Hello from printf\r\n");
     }
 }
 
@@ -165,7 +161,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
     /* Set transmission flag: transfer complete */
     UartReady = SET;
     /* Turn LED2 off: Transfer in transmission process is correct */
-    BSP_LED_Off(LED2);
+    BSP_LED_On(LED3);
+
 }
 /**
  * @brief  System Clock Configuration
