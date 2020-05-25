@@ -44,13 +44,13 @@
 /* Private define ------------------------------------------------------------*/
 #define USE_FULL_HAL_DRIVER
 
-#define CACHE_ENABLED
+//#define CACHE_ENABLED
 
 /* Private macros ------------------------------------------------------------*/
 /* Private variables and Local objects ---------------------------------------*/
 
 UART_HandleTypeDef UartHandle = {0};
-__IO ITStatus UartReady = RESET;
+__IO ITStatus uartStatus = RESET;
 /* Private function prototypes -----------------------------------------------*/
 /**
  * @brief
@@ -115,27 +115,27 @@ int main(void)
         Error_Handler();
     }
 
-    __attribute__((aligned(32))) uint8_t buffer[64]  = {0};
+    __attribute__((aligned(32))) uint8_t txBuffer[64]  = {0};
+    __attribute__((aligned(32))) uint8_t rxBuffer[64]  = {0};
 
     uint8_t counter = 0;
 
     /* Infinite loop */
     while (1) {
 
-        /* Invalidate cache prior to access by CPU */
 
         BSP_LED_On(LED2);
         HAL_StatusTypeDef status = HAL_OK;
 //        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
 
 #ifdef CACHE_ENABLED
-        SCB_CleanDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+        /* Invalidate cache prior to access by CPU */
+        SCB_CleanDCache_by_Addr ((uint32_t *)txBuffer, sizeof(txBuffer));
 #endif
 
-        snprintf((char *)buffer, sizeof(buffer), "Hello World from buffer %03d with DMA\n", counter++);
-        UartReady = RESET; /* Reset flag before transmitting */
-//        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
-        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)buffer, strlen((const char *)buffer)))) {
+        snprintf((char *)txBuffer, sizeof(txBuffer), "Hello World from buffer %03d with DMA\n", counter++);
+        uartStatus = RESET; /* Reset flag before transmitting */
+        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
             if (HAL_ERROR == status) {
                 Error_Handler();
             } else {
@@ -143,7 +143,33 @@ int main(void)
             }
         }
 
-        while (SET != UartReady ) {}    /* Wait for DMA to complete with dump polling for now */
+        while (SET != uartStatus ) {}    /* Wait for DMA to complete with dump polling for now */
+
+        uartStatus = RESET; /* Reset flag before transmitting */
+
+        /* Receive 4 characters for now, we'll add idle timeout later after this works */
+        //        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
+        if (HAL_OK != (status = HAL_UART_Receive_DMA(&UartHandle, (uint8_t *)rxBuffer, 4))) {
+            if (HAL_ERROR == status) {
+                Error_Handler();
+            } else {
+                BSP_LED_Off(LED1);
+            }
+        }
+
+        while (SET != uartStatus ) {}    /* Wait for DMA to complete with dump polling for now */
+
+//        snprintf((char *)txBuffer, sizeof(txBuffer), "Received %d bytes: %s\n", counter++);
+//        UartReady = RESET; /* Reset flag before transmitting */
+//        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
+//            if (HAL_ERROR == status) {
+//                Error_Handler();
+//            } else {
+//                BSP_LED_Off(LED1);
+//            }
+//        }
+
+
     }
 }
 
@@ -158,17 +184,40 @@ int main(void)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
   /* Set transmission flag: transfer complete */
-  UartReady = SET;
+  uartStatus = SET;
 
   /* Turn LED2 off: Transfer in transmission process is correct */
   BSP_LED_Off(LED2);
 
 }
 
+/**
+  * @brief  Rx Transfer completed callback
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report end of DMA Rx transfer, and
+  *         you can add your own implementation.
+  * @retval None
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+    /* Set transmission flag: transfer complete */
+    uartStatus = SET;
+
+    /* Turn LED2 off: Transfer in transmission process is correct */
+    BSP_LED_Off(LED2);
+}
+
+/**
+  * @brief  UART error callbacks
+  * @param  UartHandle: UART handle
+  * @note   This example shows a simple way to report transfer error, and you can
+  *         add your own implementation.
+  * @retval None
+  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
     /* Set transmission flag: transfer complete */
-    UartReady = SET;
+    uartStatus = SET;
     /* Turn LED2 off: Transfer in transmission process is correct */
     BSP_LED_On(LED3);
 

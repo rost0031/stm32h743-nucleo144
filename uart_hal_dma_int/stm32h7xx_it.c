@@ -114,8 +114,16 @@ void SysTick_Handler(void)
   * @brief  This function handles DMA interrupt request.
   * @param  None
   * @retval None
-  * @Note   This function is redefined in "main.h" and related to DMA
-  *         used for USART data transmission
+  */
+void DMA2_Stream1_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(UartHandle.hdmarx);
+}
+
+/**
+  * @brief  This function handles DMA interrupt request.
+  * @param  None
+  * @retval None
   */
 void DMA2_Stream7_IRQHandler(void)
 {
