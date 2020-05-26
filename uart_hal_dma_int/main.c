@@ -154,14 +154,12 @@ int main(void)
 //#endif
         snprintf((char *)txBuffer, sizeof(txBuffer), "Loop %03d: rcvd %d bytes: %s\n", counter++, rxBytes, rxOutBuffer);
         uartStatus = RESET; /* Reset flag before transmitting */
-        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
-            if (HAL_ERROR == status) {
-                Error_Handler();
-            } else {
-                BSP_LED_Off(LED1);
-            }
+        while (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
+            /* We might have to wait for a bit before being able to send if an error occurred during
+             * last operation. */
+            BSP_LED_On(LED3);
         }
-
+        BSP_LED_Off(LED3);
         while (SET != uartStatus ) {}    /* Wait for DMA to complete with dump polling for now */
 
         uartStatus = RESET; /* Reset flag before transmitting */
@@ -335,6 +333,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
     /* Turn LED2 off: Transfer in transmission process is correct */
     BSP_LED_On(LED3);
     HAL_UART_RxIdleCallback(UartHandle);
+    BSP_LED_Off(LED3);
 
 }
 /**
