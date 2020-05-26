@@ -1,10 +1,7 @@
 ##############################################################################
 # Product: Makefile for STM32H743-Nucleo144 DevKit bring up (Bringup Demo)
-#
-#                Northrop Grumman Innovation Systems.
-#                    ---------------------------
-#
-# Copyright (C) 2019 Northrop Grumman Innovation Systems. All rights reserved.
+#                
+# Copyright (C) 2020 Harry Rostovtsev. All rights reserved.
 #
 ##############################################################################
 # examples of invoking this Makefile:

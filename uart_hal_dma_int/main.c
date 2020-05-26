@@ -1,26 +1,9 @@
-/*------------------------------------------------------------------------------
- -------------------------------------------------------------------------------
- --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
- --                       THIS FILE IS UNCLASSIFIED                           --
- --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
- -------------------------------------------------------------------------------
- -----------------------------------------------------------------------------*/
-
 /**
  * @file    main.c
  * @brief   Main for UART HAL example
  *
- * Copyright 2020, Northrop Grumman Innovation Systems, Inc.
+ * Copyright 2020, Harry Rostovtsev.
  * All other rights reserved.
- *
- * NORTHROP GRUMMAN PROPRIETARY LEVEL I
- * This information contains proprietary data and should not be released or
- * distributed without the express written approval of Northrop Grumman
- * Innovation Systems, Inc. This document contains private or privileged
- * information and/or trade secrets, which is/are disclosed in confidence.
- * This information may be used, duplicated, or disclosed only to the extent as
- * specifically authorized in writing by Northrop Grumman Innovation Systems,
- * Inc.
  */
 
 /* Includes ------------------------------------------------------------------*/
@@ -81,8 +64,6 @@ static void     Error_Handler(void);
 /******************************************************************************/
 int main(void)
 {
-
-
     /* STM32H7xx HAL library initialization:
          - Systick timer is configured by default as source of time base, but user
            can eventually implement his proper time base source (a general purpose
@@ -181,18 +162,6 @@ int main(void)
         }
 
         while (SET != uartStatus ) {}    /* Wait for DMA to complete with dump polling for now */
-
-        //        snprintf((char *)txBuffer, sizeof(txBuffer), "Received %d bytes: %s\n", counter++);
-        //        UartReady = RESET; /* Reset flag before transmitting */
-        //        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
-        //            if (HAL_ERROR == status) {
-        //                Error_Handler();
-        //            } else {
-        //                BSP_LED_Off(LED1);
-        //            }
-        //        }
-
-
     }
 }
 

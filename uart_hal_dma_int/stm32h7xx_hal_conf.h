@@ -1,26 +1,9 @@
-/*------------------------------------------------------------------------------
- -------------------------------------------------------------------------------
- --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
- --                       THIS FILE IS UNCLASSIFIED                           --
- --  UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED   UNCLASSIFIED --
- -------------------------------------------------------------------------------
- -----------------------------------------------------------------------------*/
-
 /**
  * @file    stm32h7xx_hal_conf.h
  * @brief   Configuration for STM32 HAL library
  *
- * Copyright 2020, Northrop Grumman Innovation Systems, Inc.
+ * Copyright 2020, Harry Rostovtsev.
  * All other rights reserved.
- *
- * NORTHROP GRUMMAN PROPRIETARY LEVEL I
- * This information contains proprietary data and should not be released or
- * distributed without the express written approval of Northrop Grumman
- * Innovation Systems, Inc. This document contains private or privileged
- * information and/or trade secrets, which is/are disclosed in confidence.
- * This information may be used, duplicated, or disclosed only to the extent as
- * specifically authorized in writing by Northrop Grumman Innovation Systems,
- * Inc.
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -437,6 +420,3 @@
 #endif
 
 #endif                                              /* __STM32H7xx_HAL_CONF_H */
- 
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
