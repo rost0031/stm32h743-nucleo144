@@ -2337,6 +2337,17 @@ void HAL_UART_IRQHandler(UART_HandleTypeDef *huart)
 
   } /* End if some error occurs */
 
+
+  /* UART Receiver IDLE interrupt occurred ------------------------------------*/
+  if (((isrflags & USART_ISR_IDLE) != 0U) && ((cr1its & USART_CR1_IDLEIE) != 0U))
+  {
+    __HAL_UART_CLEAR_FLAG(huart, USART_ISR_IDLE);
+    HAL_UART_RxIdleCallback(huart);
+    if (huart->hdmarx->XferCpltCallback) {
+        huart->hdmarx->XferCpltCallback(huart->hdmarx);
+    }
+  }
+
   /* UART wakeup from Stop mode interrupt occurred ---------------------------*/
   if (((isrflags & USART_ISR_WUF) != 0U) && ((cr3its & USART_CR3_WUFIE) != 0U))
   {
@@ -2518,6 +2529,21 @@ __weak void HAL_UART_AbortReceiveCpltCallback(UART_HandleTypeDef *huart)
 
   /* NOTE : This function should not be modified, when the callback is needed,
             the HAL_UART_AbortReceiveCpltCallback can be implemented in the user file.
+   */
+}
+
+/**
+  * @brief  UART RX idle callback.
+  * @param  huart: Pointer to a UART_HandleTypeDef structure that contains
+  *                the configuration information for the specified UART module.
+  * @retval None
+  */
+ __weak void HAL_UART_RxIdleCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_UART_RxIdleCallback can be implemented in the user file
    */
 }
 

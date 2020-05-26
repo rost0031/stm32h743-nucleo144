@@ -44,13 +44,32 @@
 /* Private define ------------------------------------------------------------*/
 #define USE_FULL_HAL_DRIVER
 
+/* Uncomment to try with cache enabled */
 //#define CACHE_ENABLED
 
 /* Private macros ------------------------------------------------------------*/
 /* Private variables and Local objects ---------------------------------------*/
 
-UART_HandleTypeDef UartHandle = {0};
-__IO ITStatus uartStatus = RESET;
+UART_HandleTypeDef UartHandle = {0};       /**< UART handle that we are using */
+
+__IO ITStatus uartStatus = RESET;/**< Flag to let us know if UART is finished */
+
+static uint16_t rxBytes = 0;          /**< Number of bytes received over UART */
+
+/* These buffers are aligned to 32 byte boundaries since DMA requires it. */
+
+/* Buffer for sending DMA data over UART */
+__attribute__((aligned(32))) static uint8_t txBuffer[64]  = {0};
+
+/* Buffer for receiving DMA data over UART */
+__attribute__((aligned(32))) static uint8_t rxBuffer[64]  = {0};
+
+/* Buffer for copying received data in rxBuffer after finishing so it
+ * can be used. This probably doesn't need to be aligned but you could
+ * in theory use DMA to transfer data out of the rxBuffer to this one
+ * so we'll leave it aligned */
+__attribute__((aligned(32))) static uint8_t rxOutBuffer[64]  = {0};
+
 /* Private function prototypes -----------------------------------------------*/
 /**
  * @brief
@@ -107,6 +126,7 @@ int main(void)
     UartHandle.Init.OverSampling = UART_OVERSAMPLING_16;
     UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
+    /* Is this really necessary? */
     if (HAL_OK != HAL_UART_DeInit(&UartHandle)) {
         Error_Handler();
     }
@@ -115,25 +135,24 @@ int main(void)
         Error_Handler();
     }
 
-    __attribute__((aligned(32))) uint8_t txBuffer[64]  = {0};
-    __attribute__((aligned(32))) uint8_t rxBuffer[64]  = {0};
-
-    uint8_t counter = 0;
+    uint8_t counter = 0;                  /* Just for printing out our cycles */
 
     /* Infinite loop */
     while (1) {
 
-
         BSP_LED_On(LED2);
         HAL_StatusTypeDef status = HAL_OK;
-//        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
 
 #ifdef CACHE_ENABLED
         /* Invalidate cache prior to access by CPU */
         SCB_CleanDCache_by_Addr ((uint32_t *)txBuffer, sizeof(txBuffer));
 #endif
-
-        snprintf((char *)txBuffer, sizeof(txBuffer), "Hello World from buffer %03d with DMA\n", counter++);
+//#ifdef CACHE_ENABLED
+//        /* This is not working like it should. Perhaps rxBytes is being caught up in the invalidation?*/
+////        SCB_CleanInvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+//        SCB_InvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+//#endif
+        snprintf((char *)txBuffer, sizeof(txBuffer), "Loop %03d: rcvd %d bytes: %s\n", counter++, rxBytes, rxOutBuffer);
         uartStatus = RESET; /* Reset flag before transmitting */
         if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
             if (HAL_ERROR == status) {
@@ -147,9 +166,15 @@ int main(void)
 
         uartStatus = RESET; /* Reset flag before transmitting */
 
-        /* Receive 4 characters for now, we'll add idle timeout later after this works */
-        //        SCB_InvalidateDCache_by_Addr ((uint32_t *)buffer, sizeof(buffer));
-        if (HAL_OK != (status = HAL_UART_Receive_DMA(&UartHandle, (uint8_t *)rxBuffer, 4))) {
+        /* Clear out our "command" buffer before we go to receive more data */
+        memset(rxOutBuffer, 0, sizeof(rxOutBuffer));
+
+//#ifdef CACHE_ENABLED
+//        /* This is not working like it should. Perhaps rxBytes is being caught up in the invalidation?*/
+//        SCB_CleanInvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+//#endif
+        rxBytes = 0;
+        if (HAL_OK != (status = HAL_UART_Receive_DMA(&UartHandle, (uint8_t *)rxBuffer, sizeof(rxBuffer)))) {
             if (HAL_ERROR == status) {
                 Error_Handler();
             } else {
@@ -159,15 +184,15 @@ int main(void)
 
         while (SET != uartStatus ) {}    /* Wait for DMA to complete with dump polling for now */
 
-//        snprintf((char *)txBuffer, sizeof(txBuffer), "Received %d bytes: %s\n", counter++);
-//        UartReady = RESET; /* Reset flag before transmitting */
-//        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
-//            if (HAL_ERROR == status) {
-//                Error_Handler();
-//            } else {
-//                BSP_LED_Off(LED1);
-//            }
-//        }
+        //        snprintf((char *)txBuffer, sizeof(txBuffer), "Received %d bytes: %s\n", counter++);
+        //        UartReady = RESET; /* Reset flag before transmitting */
+        //        if (HAL_OK != (status = HAL_UART_Transmit_DMA(&UartHandle, (uint8_t *)txBuffer, strlen((const char *)txBuffer)))) {
+        //            if (HAL_ERROR == status) {
+        //                Error_Handler();
+        //            } else {
+        //                BSP_LED_Off(LED1);
+        //            }
+        //        }
 
 
     }
@@ -175,51 +200,141 @@ int main(void)
 
 /* Private functions ---------------------------------------------------------*/
 /**
-  * @brief  Tx Transfer completed callback
-  * @param  UartHandle: UART handle.
-  * @note   This example shows a simple way to report end of DMA Tx transfer, and
-  *         you can add your own implementation.
-  * @retval None
-  */
+ * @brief  Tx Transfer completed callback
+ * @param  UartHandle: UART handle.
+ * @note   This example shows a simple way to report end of DMA Tx transfer, and
+ *         you can add your own implementation.
+ * @retval None
+ */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
-{
-  /* Set transmission flag: transfer complete */
-  uartStatus = SET;
-
-  /* Turn LED2 off: Transfer in transmission process is correct */
-  BSP_LED_Off(LED2);
-
-}
-
-/**
-  * @brief  Rx Transfer completed callback
-  * @param  UartHandle: UART handle
-  * @note   This example shows a simple way to report end of DMA Rx transfer, and
-  *         you can add your own implementation.
-  * @retval None
-  */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
     /* Set transmission flag: transfer complete */
     uartStatus = SET;
 
     /* Turn LED2 off: Transfer in transmission process is correct */
     BSP_LED_Off(LED2);
+
 }
 
 /**
-  * @brief  UART error callbacks
-  * @param  UartHandle: UART handle
-  * @note   This example shows a simple way to report transfer error, and you can
-  *         add your own implementation.
-  * @retval None
-  */
+ * @brief  Rx Transfer completed callback
+ * @param  UartHandle: UART handle
+ * @note   This example shows a simple way to report end of DMA Rx transfer, and
+ *         you can add your own implementation.
+ * @retval None
+ */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+{
+    /* Some error checking */
+    if (NULL == UartHandle) {
+        return;
+    }
+
+    if (USART3 == UartHandle->Instance) {
+
+        if (NULL == UartHandle->hdmarx) {
+            return;
+        }
+
+        /* Determine how many items of data have been received */
+        rxBytes = UartHandle->RxXferSize - __HAL_DMA_GET_COUNTER(UartHandle->hdmarx);
+
+        HAL_DMA_Abort(UartHandle->hdmarx);
+
+        UartHandle->RxXferCount = 0;
+        /* Check if a transmit process is ongoing or not */
+        if(UartHandle->gState == HAL_UART_STATE_BUSY_TX_RX) {
+            UartHandle->gState = HAL_UART_STATE_BUSY_TX;
+        } else {
+            UartHandle->gState = HAL_UART_STATE_READY;
+        }
+#ifdef CACHE_ENABLED
+        /* This is not working like it should. Perhaps rxBytes is being caught up in the invalidation?*/
+        //        SCB_CleanInvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+        SCB_InvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+#endif
+        memcpy( rxOutBuffer, rxBuffer, rxBytes);
+
+        uartStatus = SET;
+
+        /* Turn LED2 off: Transfer in transmission process is correct */
+        BSP_LED_Off(LED2);
+    }
+
+}
+
+/**
+ * @brief  UART receive process idle callback for short RX DMA transfers.
+ *
+ * @note   This function was added as part of a modification to stm32h7xx_hal_uart.c/h
+ *         that add handling of the IDLE interrupt. People on forums have been
+ *         begging STM to add this functionality since it's the only rational
+ *         way to deal with high speed uart rx of variable length data but STM
+ *         is gonna STM...
+ *         https://community.st.com/s/question/0D50X00009XkhGfSAJ/cubemx-feature-request-add-usart-rx-idle-handling
+ *         While it might be possible (or perhaps even better) to use the Receiver
+ *         Timeout interrupt, STM HAL drivers treat it as an error so that's not
+ *         a great path despite it being more configurable.
+ *
+ * @param  UartHandle: Pointer to a UART_HandleTypeDef structure that contains
+ *         the configuration information for the specified UART module.
+ * @retval None
+ */
+void HAL_UART_RxIdleCallback(UART_HandleTypeDef* UartHandle)
+{
+    /* Some error checking */
+    if (NULL == UartHandle) {
+        return;
+    }
+
+    if (USART3 == UartHandle->Instance) {
+
+        if (NULL == UartHandle->hdmarx) {
+            return;
+        }
+
+        /* Overrun error means our DMA buffer ran out of space before IDLE went off */
+        if (UartHandle->ErrorCode & HAL_UART_ERROR_ORE) {
+            rxBytes = UartHandle->RxXferSize;
+        } else {
+            /* Determine how many items of data have been received */
+            rxBytes = UartHandle->RxXferSize - __HAL_DMA_GET_COUNTER(UartHandle->hdmarx);
+        }
+
+        HAL_DMA_Abort(UartHandle->hdmarx);
+
+        UartHandle->RxXferCount = 0;
+        /* Check if a transmit process is ongoing or not */
+        if(UartHandle->gState == HAL_UART_STATE_BUSY_TX_RX) {
+            UartHandle->gState = HAL_UART_STATE_BUSY_TX;
+        } else {
+            UartHandle->gState = HAL_UART_STATE_READY;
+        }
+#ifdef CACHE_ENABLED
+        /* This is not working like it should. Perhaps rxBytes is being caught up in the invalidation?*/
+//        SCB_CleanInvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+        SCB_InvalidateDCache_by_Addr ((uint32_t *)rxBuffer, sizeof(rxBuffer));
+#endif
+        memcpy( rxOutBuffer, rxBuffer, rxBytes);
+
+        uartStatus = SET;
+    }
+}
+
+/**
+ * @brief  UART error callbacks
+ * @param  UartHandle: UART handle
+ * @note   This example shows a simple way to report transfer error, and you can
+ *         add your own implementation.
+ * @retval None
+ */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
     /* Set transmission flag: transfer complete */
     uartStatus = SET;
     /* Turn LED2 off: Transfer in transmission process is correct */
     BSP_LED_On(LED3);
+    HAL_UART_RxIdleCallback(UartHandle);
 
 }
 /**

@@ -111,6 +111,10 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 		/* Associate the initialized DMA handle to the the UART handle */
 		__HAL_LINKDMA(huart, hdmarx, hdma_rx);
 
+		/* Enable some extra interrupts that we care about */
+		__HAL_UART_ENABLE_IT(huart, UART_IT_IDLE);
+
+
 		/* NVIC configuration for DMA transfer complete interrupt */
 		HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 1);
 		HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
