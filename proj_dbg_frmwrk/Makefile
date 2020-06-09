@@ -191,7 +191,9 @@ C_SRCS                 += main.c \
                           \
                           stm32h7xx_nucleo_144.c \
                           \
-                          syscalls.c
+                          syscalls.c \
+                          \
+                          uart.c
                           
 A_OBJS                 = $(patsubst %.s,%.o,$(A_SRCS))
 A_OBJS_EXT             = $(addprefix $(BIN_DIR)/, $(A_OBJS))

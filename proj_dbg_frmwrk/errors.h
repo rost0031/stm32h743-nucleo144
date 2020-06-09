@@ -27,6 +27,7 @@ typedef enum {
     ERR_MEM_NULL            = 0x01, /**< NULL memory or buffer */
     ERR_LEN_INVALID         = 0x02, /**< Invalid length of something */
     ERR_ARG_INVALID         = 0x03, /**< Invalid argument passed in */
+    ERR_HW_INIT_FAILURE     = 0x04, /**< HW initialization failure */
 
 
     ERR_UNIMPLEMENTED       = 0xFE, /**< Unimplemented feature */

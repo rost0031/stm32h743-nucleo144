@@ -15,8 +15,15 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
 #include "errors.h"
 #include "buffers.h"
+#include "board_defs.h"
+
+#include "stm32h7xx.h"
+#include "stm32h743xx.h"
+#include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal_uart.h"
 /* Exported types ------------------------------------------------------------*/
 
 /**
@@ -44,22 +51,14 @@ typedef struct {
     Buffer_t rxBuffer;  /**< Buffer for RX */
 } UartBuf_t;
 
-/**
- * @brief   User configuration structure for the UART driver.
- *
- * This structure should hold any data that can be changed during runtime as
- * opposed to the constant data such as clock and pin configurations
- */
 typedef struct {
-    uint32_t                baudRate;      /**< UART baud rate */
-    lpuart_parity_mode_t    parityMode;    /**< parity mode, disabled, even, odd */
-    lpuart_stop_bit_count_t stopBits;      /**< number of stop bits */
-    lpuart_data_bits_t      dataBitsCount; /**< number of data bits */
-    MsgIf_t                 msgIf;         /**< Expected message types */
-} UartUserConfig_t;
+    DMA_HandleTypeDef* const handle;
+    const IRQn_Type         irqNumber;             /**< DMA TX IRQ number */
+    const IRQPrio_t         irqPriority;         /**< DMA TX IRQ priority */
+} DmaDev_t;
 
 /**
- * @brief   UART attributes
+ * @brief   UART Device Structure
  *
  * This is a constant top-level structure that contains data that pertains to
  * setting up and running a UART driver for a given port. Because this structure
@@ -68,25 +67,25 @@ typedef struct {
  * structure should be used to point to dynamic structures that are allowed to
  * have dynamic data such as speed, buffer data, message interface, etc.
  */
-typedef struct UartAttributes {
+typedef struct {
     /* General UART settings */
-    UART_HandleTypeDef      handle;           /**< Uart Memory map pointer */
-    const clock_ip_name_t    clk;            /**< Clock enumeration */
-    const IRQn_Type          irq;            /**< IRQ for this UART */
+    UART_HandleTypeDef      handleUart;           /**< Configurable UART data */
+    const IRQn_Type         irqUart;                   /**< IRQ for this UART */
+    const IRQPrio_t         irqPrioUart;                    /**< IRQ priority */
 
     /* UART GPIO pin configurations */
-    const uint32_t           txPin[GPIO_PIN_DEF_LEN];        /**< UART TX pin */
-    const uint32_t           rxPin[GPIO_PIN_DEF_LEN];        /**< UART RX pin */
+    const GPIO_InitTypeDef  gpioTx;                      /**< GPIO pin for TX */
+    GPIO_TypeDef*           gpioTxPort;                 /**< GPIO port for TX */
+    const GPIO_InitTypeDef  gpioRx;                      /**< GPIO pin for RX */
+    GPIO_TypeDef*           gpioRxPort;                 /**< GPIO port for RX */
 
     /* DMA */
-    DmaChnlConf_t* const     pTxDma;         /**< DMA information for TX */
-    DmaChnlConf_t* const     pRxDma;         /**< DMA information for RX */
-
+    DmaDev_t                dmaTx;
+    DmaDev_t                dmaRx;
     /* Dynamic data */
-    UartBufMgr_t* const      pBufMgr;        /**< Uart buffer management */
-    UartUserConfig_t* const  pUserConfig;    /**< User configurable uart settings */
+    UartBuf_t* const      pBufMgr;                /**< Uart buffer management */
 
-} UartAttr_t;
+} UartDev_t;
 
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
@@ -97,7 +96,21 @@ typedef struct UartAttributes {
  * @return  Error_t code that specifies success or failure
  */
 Error_t UART_init(
-        UartPort_t uart     /**< [in] which UART to initialize */
+        UartPort_t port                    /**< [in] which UART to initialize */
+);
+
+/**
+ * @brief   Start a given UART
+ *
+ * This function enables the interrupts that allow the device to function after
+ * initialization. This is to allow RTOSes to set up their systems and buffers
+ * and gives user some control over the HW to prevent interrupts before the
+ * system is ready to correctly handle them.
+ *
+ * @return  Error_t code that specifies success or failure
+ */
+Error_t UART_start(
+        UartPort_t port                         /**< [in] which UART to start */
 );
 
 #ifdef __cplusplus
