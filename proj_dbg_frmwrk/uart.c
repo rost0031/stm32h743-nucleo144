@@ -24,10 +24,26 @@ static UartData_t *pUarts = NULL;                   /**< pointer to UART data */
 
 /**
  * @brief   Find device by handle
- *
+ * @return  Uart_t port
  */
 static Uart_t UART_findDeviceByHandle(
         UART_HandleTypeDef* huart           /**< [in,out] UART handle pointer */
+);
+
+/**
+ * @brief   Find device by instance
+ * @return  Uart_t port
+ */
+static Uart_t UART_findDeviceByInstance(
+        USART_TypeDef* instance           /**< [in,out] UART instance pointer */
+);
+
+/**
+ * @brief   Get DMA handle by instance
+ * @return  Uart_t port
+ */
+static DMA_HandleTypeDef* UART_getDmaHandleByInstance(
+        DMA_Stream_TypeDef* instance              /**< [in,out] DMA instance pointer */
 );
 
 /* Public and Exported functions ---------------------------------------------*/
@@ -182,12 +198,12 @@ Error_t UART_recvDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
      * the caller worry about this, we handle it here. In experiments, a max of
      * 2 loops were required to get this but it could in theory be longer. */
     HAL_StatusTypeDef halStatus = HAL_OK;
-    while (HAL_OK != (halStatus = HAL_UART_Transmit_DMA(
+    while (HAL_OK != (halStatus = HAL_UART_Receive_DMA(
             &(pUarts[port].pUart->handle), pData, dataLen))) {
         switch (halStatus) {
             case HAL_TIMEOUT: status = ERR_HW_HAL_TIMEOUT; goto END; break;
             case HAL_ERROR:   status = ERR_HW_HAL_ERROR;   goto END; break;
-            default: break;
+            default: continue;
         }
     }
 
@@ -483,8 +499,38 @@ void HAL_UART_ErrorCallback(
 
 }
 
+/******************************************************************************/
+void UART_redirectDmaIsrToHAL(DMA_Stream_TypeDef* instance)
+{
+    if (NULL == instance) {
+        return;
+    }
 
+    DMA_HandleTypeDef *handle = NULL;
+    if (NULL == (handle = UART_getDmaHandleByInstance(instance))) {
+        return;
+    }
+
+    HAL_DMA_IRQHandler(handle);
+}
+
+/******************************************************************************/
+void UART_redirectIsrToHAL(USART_TypeDef* instance)
+{
+    if (NULL == instance) {
+        return;
+    }
+
+    Uart_t port = UART_MAX;
+    if (UART_MAX == (port = UART_findDeviceByInstance(instance))) {
+        return;
+    }
+
+    HAL_UART_IRQHandler(&(pUarts[port].pUart->handle));
+}
 /* Private functions ---------------------------------------------------------*/
+
+/******************************************************************************/
 static Uart_t UART_findDeviceByHandle(UART_HandleTypeDef* huart)
 {
     for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
@@ -493,4 +539,28 @@ static Uart_t UART_findDeviceByHandle(UART_HandleTypeDef* huart)
         }
     }
     return UART_MAX;
+}
+
+/******************************************************************************/
+static Uart_t UART_findDeviceByInstance(USART_TypeDef* instance)
+{
+    for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
+        if (instance == pUarts[port].pUart->handle.Instance) {
+            return port;
+        }
+    }
+    return UART_MAX;
+}
+
+/******************************************************************************/
+static DMA_HandleTypeDef* UART_getDmaHandleByInstance(DMA_Stream_TypeDef* instance)
+{
+    for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
+        if (instance == pUarts[port].pUart->handle.hdmarx->Instance) {
+            return (pUarts[port].pUart->handle.hdmarx);
+        } else if (instance == pUarts[port].pUart->handle.hdmatx->Instance) {
+            return (pUarts[port].pUart->handle.hdmatx);
+        }
+    }
+    return NULL;
 }

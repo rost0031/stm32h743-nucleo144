@@ -168,6 +168,29 @@ Error_t UART_recvDma(
         uint8_t* const pData             /**< [in,out] buffer to receive data */
 );
 
+/**
+ * @brief   Redirect ISR to HAL
+ *
+ * This function intercepts the ISR call that would normally go directly to
+ * STM's HAL driver and redirects it there. The reason for doing this is that
+ * STM HAL drivers all take the handle as a parameter instead of finding the
+ * handle by instance, which in turn necessitates using a shared handle and
+ * global variables. Instead, we find the handle by instance and pass that to
+ * the HAL drivers.
+ *
+ * The better way of doing this would be to run LL drivers because STM's HAL
+ * implementation is a travesty.
+ *
+ * @return  None
+ */
+void UART_redirectIsrToHAL(
+        USART_TypeDef* instance
+);
+
+void UART_redirectDmaIsrToHAL(
+        DMA_Stream_TypeDef* instance
+);
+
 #ifdef __cplusplus
 }
 #endif

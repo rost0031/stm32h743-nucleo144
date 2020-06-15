@@ -176,7 +176,6 @@ C_SRCS                 += main.c \
                           bsp.c \
                           stm32h7xx_it.c \
                           system_stm32h7xx.c \
-                          stm32h7xx_hal_msp.c \
                           \
                           stm32h7xx_hal.c \
                           stm32h7xx_hal_cortex.c \

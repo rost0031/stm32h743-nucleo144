@@ -17,6 +17,7 @@
 
 #include "button.h"
 #include "led.h"
+#include "leds.h"
 #include "uart.h"
 
 /* Compile-time called macros ------------------------------------------------*/
@@ -69,9 +70,6 @@ Error_t BSP_init(void)
         status = ERR_HW_INIT_FAILURE; goto END;
     }
 
-
-
-
     /* Enable all the clocks that we are going to use here. While it might make
      * sense to put these clock enables right into the drivers, some of these
      * clocks are shared (DMA and GPIO, for example), it's better to do it up
@@ -82,17 +80,7 @@ Error_t BSP_init(void)
         goto END;
     }
 
-    /* Enable caches. Instruction cache is pretty safe to enable but data cache
-     * is tricky, especially if DMA is used. This is why the DCache is behind a
-     * compile flag. It's really not worth the trouble in most cases. The
-     * performance gains are minimal if on-die RAM is used. */
-//    SCB_EnableICache();
-//
-//#ifdef CACHE_ENABLED
-//    SCB_EnableDCache();
-//#else
-////    SCB_DisableDCache();
-//#endif
+    NVIC_SetPriorityGrouping(0U);
 
     /* While it might make sense to enable these clocks right in the driver, it
      * is not possible to disable them in the driver since multiple devices
@@ -113,10 +101,29 @@ Error_t BSP_init(void)
     LED_init(LED2);
     LED_init(LED3);
 
+    /* Configure the UARTs */
+    if (ERR_NONE != (status = UART_init(UART_DBG))) {
+        goto END;
+    }
+
+
+END:                                     /* Tag to jump to in case of failure */
+    return status;
+}
+
+/******************************************************************************/
+Error_t BSP_start(void)
+{
+    Error_t status = ERR_NONE;
+
     /* If we were using an RTOS, we'd want to finish up our RTOS init before
      * starting drivers but since we are bare-metal, we can go ahead and start
      * them now. */
     BUT_start(BUTTON_USER1);
+
+    if (ERR_NONE != (status = UART_start(UART_DBG))) {
+        goto END;
+    }
 
 END:                                     /* Tag to jump to in case of failure */
     return status;

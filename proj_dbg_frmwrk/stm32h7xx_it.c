@@ -10,6 +10,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_it.h"
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_hal_uart.h"
+#include "uart.h"
 
 /* Private typedefs ----------------------------------------------------------*/
 /* Private defines -----------------------------------------------------------*/
@@ -100,7 +102,8 @@ void SysTick_Handler(void)
   */
 void DMA2_Stream1_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(UartHandle.hdmarx);
+//    HAL_DMA_IRQHandler(UartHandle.hdmarx);
+    UART_redirectDmaIsrToHAL(DMA2_Stream1);
 }
 
 /**
@@ -110,7 +113,8 @@ void DMA2_Stream1_IRQHandler(void)
   */
 void DMA2_Stream7_IRQHandler(void)
 {
-  HAL_DMA_IRQHandler(UartHandle.hdmatx);
+//  HAL_DMA_IRQHandler(UartHandle.hdmatx);
+    UART_redirectDmaIsrToHAL(DMA2_Stream7);
 }
 
 /**
@@ -147,7 +151,8 @@ void EXTI15_10_IRQHandler(void)
   */
 void USART3_IRQHandler(void)
 {
-    HAL_UART_IRQHandler(&UartHandle);
+//    HAL_UART_IRQHandler(&UartHandle);
+    UART_redirectIsrToHAL(USART3);
 }
 
 /* Private functions ---------------------------------------------------------*/

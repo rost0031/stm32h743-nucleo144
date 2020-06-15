@@ -33,6 +33,16 @@ extern "C" {
  */
 Error_t BSP_init(void);
 
+/**
+ * @brief   Start all the drivers and board support
+ *
+ * This function calls all the driver start functions which enables all the
+ * interrupts and allows the system to start responding to events
+ *
+ * @return  Error_t code that specifies success or failure
+ */
+Error_t BSP_start(void);
+
 #ifdef __cplusplus
 }
 #endif
