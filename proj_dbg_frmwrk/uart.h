@@ -20,73 +20,10 @@ extern "C" {
 #include "buffers.h"
 #include "board_defs.h"
 
-#include "stm32h7xx.h"
-#include "stm32h743xx.h"
-#include "stm32h7xx_hal.h"
-#include "stm32h7xx_hal_uart.h"
+#include "uart_data.h"
+#include "uarts.h"
+
 /* Exported types ------------------------------------------------------------*/
-
-/**
- * @brief   UART ports available on the system.
- *
- * This type allows abstraction from UART instances, handles, etc. and lets the
- * user deal with just the UART by its functionality using this name. It is the
- * primary interface to the UART driver.
- * Using enumerations allows the compiler to do most of the checks at compile
- * time instead of having to check at runtime
- */
-typedef enum {
-   UART_DBG = 0,   /**< UART port for debug output/input */
-
-   /* Insert more serial port enumerations here... */
-   UART_MAX         /**< Maximum number of available UART ports on the system */
-} UartPort_t;
-
-
-/**
- * @brief   UART buffer management
- */
-typedef struct {
-    Buffer_t txBuffer;  /**< Buffer for TX */
-    Buffer_t rxBuffer;  /**< Buffer for RX */
-} UartBuf_t;
-
-typedef struct {
-    DMA_HandleTypeDef* const handle;
-    const IRQn_Type         irqNumber;             /**< DMA TX IRQ number */
-    const IRQPrio_t         irqPriority;         /**< DMA TX IRQ priority */
-} DmaDev_t;
-
-/**
- * @brief   UART Device Structure
- *
- * This is a constant top-level structure that contains data that pertains to
- * setting up and running a UART driver for a given port. Because this structure
- * is constant, it should only contain data that can't change during runtime
- * such as clock, base port, pins, etc. For dynamic data, a pointer in this
- * structure should be used to point to dynamic structures that are allowed to
- * have dynamic data such as speed, buffer data, message interface, etc.
- */
-typedef struct {
-    /* General UART settings */
-    UART_HandleTypeDef      handleUart;           /**< Configurable UART data */
-    const IRQn_Type         irqUart;                   /**< IRQ for this UART */
-    const IRQPrio_t         irqPrioUart;                    /**< IRQ priority */
-
-    /* UART GPIO pin configurations */
-    const GPIO_InitTypeDef  gpioTx;                      /**< GPIO pin for TX */
-    GPIO_TypeDef*           gpioTxPort;                 /**< GPIO port for TX */
-    const GPIO_InitTypeDef  gpioRx;                      /**< GPIO pin for RX */
-    GPIO_TypeDef*           gpioRxPort;                 /**< GPIO port for RX */
-
-    /* DMA */
-    DmaDev_t                dmaTx;
-    DmaDev_t                dmaRx;
-    /* Dynamic data */
-    UartBuf_t* const      pBufMgr;                /**< Uart buffer management */
-
-} UartDev_t;
-
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
@@ -97,7 +34,7 @@ typedef struct {
  * @retval  ERR_NONE: success
  */
 Error_t UART_init(
-        UartPort_t port                    /**< [in] which UART to initialize */
+        Uart_t port                    /**< [in] which UART to initialize */
 );
 
 /**
@@ -107,7 +44,7 @@ Error_t UART_init(
  * @retval  ERR_NONE: success
  */
 Error_t UART_deInit(
-        UartPort_t port                  /**< [in] which UART to deinitialize */
+        Uart_t port                  /**< [in] which UART to deinitialize */
 );
 
 /**
@@ -122,7 +59,113 @@ Error_t UART_deInit(
  * @retval  ERR_NONE: success
  */
 Error_t UART_start(
-        UartPort_t port                         /**< [in] which UART to start */
+        Uart_t port                               /**< [in] which system UART */
+);
+
+/**
+ * @brief   Set a Data Sent callback
+ *
+ * Set a function to call upon UART completing a data send
+ *
+ * @return  None
+ */
+void UART_regCallbackDataSent(
+        Uart_t port,                              /**< [in] which system UART */
+        UartCallback_t callback
+);
+
+/**
+ * @brief   Set a Data Received callback
+ *
+ * Set a function to call upon UART completing a data receive. This will be
+ * called either when there is an IDLE detected or when the receive buffer
+ * is full.
+ *
+ * @return  None
+ */
+void UART_regCallbackDataRcvd(
+        Uart_t port,                              /**< [in] which system UART */
+        UartCallback_t callback
+);
+
+/**
+ * @brief   Clear a Data Sent callback
+ * @return  None
+ */
+void UART_clrCallbackDataSent(
+        Uart_t port                               /**< [in] which system UART */
+);
+
+/**
+ * @brief   Clear a Data Received callback
+ * @return  None
+ */
+void UART_clrCallbackDataRcvd(
+        Uart_t port                               /**< [in] which system UART */
+);
+
+/**
+ * @brief   Send data over UART using DMA
+ *
+ * This function does some basic error checking on inputs and initiates a DMA
+ * transfer of passed in data and returns instantly. If the user registered a
+ * callback for transfer complete, this driver will call the user callback
+ * when DMA transfer is complete.
+ *
+ * @warning The caller of this function is responsible for maintaining the
+ * buffer that was passed in until DMA transfer is complete. No data is
+ * copied to any local buffers and the DMA transfer is done directly out of
+ * the passed in buffer.
+ *
+ * @note:   STM HAL drivers have some strange behavior if trying to send
+ * immediately after a send was just finished and the next call to their driver
+ * returns a BUSY error. This error clears quickly but you need to attempt a
+ * transfer again before it clears. The user is spared this by this driver by
+ * looping until the BUSY error is cleared. All other HAL errors will result in
+ * return of an error.
+ *
+ * @return  Error_t code that specifies success or failure
+ * @retval  ERR_NONE: success
+ */
+Error_t UART_sendDma(
+        Uart_t port,                              /**< [in] which system UART */
+        uint16_t dataLen,                   /**< [in] length of data in pData */
+        uint8_t* const pData             /**< [in] ptr to data buffer to send */
+);
+
+/**
+ * @brief   Receive data over UART using DMA
+ *
+ * This function does some basic error checking on inputs and initiates a DMA
+ * receive of data into passed in buffer and returns instantly. The driver will
+ * write received data into the passed in buffer until 1 of 3 conditions occur:
+ *
+ * 1. DMA/UART error is detected.
+ * 2. Passed in buffer becomes full.
+ * 3. An IDLE is detected on the UART at the configured baud rate.
+ *
+ * If the caller registered a callback for receive complete, this driver will
+ * call the user callback when any of the conditions above occur.
+ *
+ * @warning The caller of this function is responsible for maintaining the
+ * buffer that was passed in until DMA transfer is complete. No data is
+ * copied to any local buffers and the DMA transfer is done directly into the
+ * passed in buffer.
+ *
+ * @note:   STM HAL drivers have some strange behavior if trying to send
+ * immediately after a send was just finished and the next call to their driver
+ * returns a BUSY error. This error clears quickly but you need to attempt a
+ * transfer again before it clears. The user is spared this by this driver by
+ * looping until the BUSY error is cleared. All other HAL errors will result in
+ * return of an error.
+ *
+ * @return  Error_t code that specifies success or failure
+ * @retval  ERR_NONE: success
+ */
+Error_t UART_recvDma(
+        Uart_t port,                              /**< [in] which system UART */
+        uint16_t dataLenMax,         /**< [in] max length of the pData buffer */
+        uint8_t* const pData             /**< [in,out] buffer to receive data */
 );
 
 #ifdef __cplusplus

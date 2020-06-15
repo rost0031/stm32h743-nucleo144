@@ -1,6 +1,6 @@
 /**
- * @file    button_data.h
- * @brief   Button data specific to this board
+ * @file    button_data_defs.h
+ * @brief   Button data definitions specific to this board
  *
  * Copyright 2020, Harry Rostovtsev.
  * All other rights reserved.
@@ -61,5 +61,5 @@ typedef struct {
 }
 #endif
 
-#endif                                                     /* __BUTTON_DATA_H */
+#endif                                                /* __BUTTON_DATA_DEFS_H */
 

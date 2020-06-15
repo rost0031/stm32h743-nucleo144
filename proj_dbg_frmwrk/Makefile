@@ -195,6 +195,7 @@ C_SRCS                 += main.c \
                           gpio.c \
                           gpio_data.c \
                           uart.c \
+                          uart_data.c \
                           \
                           button.c \
                           button_data.c \

@@ -1,6 +1,6 @@
 /**
  * @file    gpio_data.h
- * @brief   GPIO data specific to this board
+ * @brief   GPIO data definitions specific to this board
  *
  * Copyright 2020, Harry Rostovtsev.
  * All other rights reserved.
@@ -29,9 +29,12 @@ extern "C" {
 typedef GPIO_PinState GpioPinState_t;
 
 /**
- * @brief   GPIO callback function pointer type with pin and its state as arguments
+ * @brief   GPIO callback function pointer type
  */
-typedef void (*GPIOCallback_t)(GpioPin_t, GpioPinState_t);
+typedef void (*GPIOCallback_t)(
+        GpioPin_t,                            /**< [in] Which system GPIO pin */
+        GpioPinState_t                         /**< [in] current state of pin */
+);
 
 /**
  * @brief   GPIO interrupt data
@@ -40,16 +43,18 @@ typedef void (*GPIOCallback_t)(GpioPin_t, GpioPinState_t);
  * configure GPIO interrupt.
  */
 typedef struct {
-    const IRQn_Type irq;        /**< Interrupt number */
-    const IRQPrio_t prio;       /**< Interrupt priority */
-    GPIOCallback_t  callback;   /**< Callback to call on interrupt */
+    const IRQn_Type irq;                                /**< Interrupt number */
+    const IRQPrio_t prio;                             /**< Interrupt priority */
+    GPIOCallback_t  callback;              /**< Callback to call on interrupt */
 } GpioIrqData_t;
 
-/*! @brief GPIO data structure definition */
+/**
+ * @brief GPIO data structure definition
+ */
 typedef struct {
-    const GPIO_InitTypeDef  init;
-    const GPIO_TypeDef*     port;
-    GpioIrqData_t* const    pInt;
+    const GPIO_InitTypeDef  init;                /**< GPIO pin init structure */
+    const GPIO_TypeDef*     port;                              /**< GPIO port */
+    GpioIrqData_t* const    pInt;          /**< GPIO interrupt data if needed */
 } GpioData_t;
 
 /* Exported constants --------------------------------------------------------*/
@@ -60,5 +65,5 @@ typedef struct {
 }
 #endif
 
-#endif                                                       /* __GPIO_DATA_H */
+#endif                                                  /* __GPIO_DATA_DEFS_H */
 

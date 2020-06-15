@@ -28,7 +28,9 @@ typedef enum {
     ERR_LEN_INVALID         = 0x02, /**< Invalid length of something */
     ERR_ARG_INVALID         = 0x03, /**< Invalid argument passed in */
     ERR_HW_INIT_FAILURE     = 0x04, /**< HW initialization failure */
-
+    ERR_HW_HAL_ERROR        = 0x05, /**< HW HAL error occurred */
+    ERR_HW_HAL_BUSY         = 0x06, /**< HW HAL busy */
+    ERR_HW_HAL_TIMEOUT      = 0x07, /**< HW HAL timeout */
 
     ERR_UNIMPLEMENTED       = 0xFE, /**< Unimplemented feature */
     ERR_UNKNOWN             = 0xFF  /**< Max Error code*/

@@ -21,9 +21,9 @@ extern "C" {
  * @brief   Buffer structure
  */
 typedef struct {
-    const uint16_t maxLen;  /**< Max length of the buffer */
-    uint16_t len;           /**< Length of data in the buffer */
-    uint8_t* const pData;   /**< Pointer to the actual data */
+    uint16_t maxLen;                        /**< Max length of the buffer */
+    uint16_t len;                           /**< Length of data in the buffer */
+    uint8_t* pData;                         /**< Pointer to the actual data */
 } Buffer_t;
 
 /* Exported constants --------------------------------------------------------*/
