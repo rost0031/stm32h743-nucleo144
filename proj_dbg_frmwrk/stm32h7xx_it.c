@@ -113,9 +113,41 @@ void DMA2_Stream7_IRQHandler(void)
   HAL_DMA_IRQHandler(UartHandle.hdmatx);
 }
 
+/**
+  * @brief  This function handles external lines 15 to 10 interrupt request.
+  * @param  None
+  * @retval None
+  */
+void EXTI15_10_IRQHandler(void)
+{
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_10)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
+    }
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_11)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_11);
+    }
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_12)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_12);
+    }
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_13)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
+    }
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_14)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
+    }
+    if (0x00 != __HAL_GPIO_EXTI_GET_IT(GPIO_PIN_15)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_15);
+    }
+}
+
+/**
+  * @brief  This function handles UART3 interrupts
+  * @param  None
+  * @retval None
+  */
 void USART3_IRQHandler(void)
 {
-  HAL_UART_IRQHandler(&UartHandle);
+    HAL_UART_IRQHandler(&UartHandle);
 }
 
 /* Private functions ---------------------------------------------------------*/

@@ -9,6 +9,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "uart.h"
 #include <stdbool.h>
+#include "stm32h7xx_hal_uart.h"
 
 /* Compile-time called macros ------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -122,7 +123,20 @@ Error_t UART_init(UartPort_t port)
         status = ERR_HW_INIT_FAILURE; goto END;
     }
 
+END:                                     /* Tag to jump to in case of failure */
+    return status;
+}
 
+/******************************************************************************/
+Error_t UART_deInit(UartPort_t port)
+{
+    Error_t status = ERR_NONE;
+
+    /* The cast is just for STM HAL driver call since it expects a non-const
+     * despite the fact it makes no changes */
+    if (HAL_OK != HAL_UART_DeInit((UART_HandleTypeDef *)&(uarts[port].handleUart))) {
+        status = ERR_HW_INIT_FAILURE; goto END;
+    }
 
 END:                                     /* Tag to jump to in case of failure */
     return status;
@@ -131,8 +145,6 @@ END:                                     /* Tag to jump to in case of failure */
 /******************************************************************************/
 Error_t UART_start(UartPort_t port)
 {
-    Error_t status = ERR_NONE;
-
     /* Enable some extra interrupts that we care about */
     __HAL_UART_ENABLE_IT(&uarts[port].handleUart, UART_IT_IDLE);
 
@@ -148,17 +160,45 @@ Error_t UART_start(UartPort_t port)
     HAL_NVIC_SetPriority(uarts[port].irqUart, uarts[port].irqPrioUart, 1);
     HAL_NVIC_EnableIRQ(uarts[port].irqUart);
 
-END:                                     /* Tag to jump to in case of failure */
-    return status;
+    /* There's just no error checking that can be done in this function but
+     * we'll return success just so we can keep a consistent interface to the
+     * driver */
+    return ERR_NONE;
+}
+
+/******************************************************************************/
+Error_t UART_stop(UartPort_t port)
+{
+    /* Enable some extra interrupts that we care about */
+    __HAL_UART_DISABLE_IT(&uarts[port].handleUart, UART_IT_IDLE);
+
+    /* Take down interrupts for DMA RX/TX and UART */
+    HAL_NVIC_DisableIRQ(uarts[port].dmaTx.irqNumber);
+    HAL_NVIC_DisableIRQ(uarts[port].dmaRx.irqNumber);
+    HAL_NVIC_DisableIRQ(uarts[port].irqUart);
+
+    /* There's just no error checking that can be done in this function but
+     * we'll return success just so we can keep a consistent interface to the
+     * driver */
+    return ERR_NONE;
 }
 
 /* STM HAL callbacks ---------------------------------------------------------*/
 
 /**
  * @brief UART MSP Initialization
- *        This function configures the hardware resources used in this example:
- *           - Peripheral's clock enable
- *           - Peripheral's GPIO Configuration
+ *
+ * This function is a callback to the STM HAL functions that enables the UARTs.
+ * When calling UART_init"()", STM HAL code will call this function as a
+ * callback. This function then:
+ *
+ * 1. Calls HAL functions to enable the GPIO pins
+ * 2. Calls HAL functions to disable the UART clocks
+ * 3.
+ * 4. Calls HAL functions to disable the DMA used.
+ *
+ * @note: This function is weakly defined in the STM HAL driver and by placing a
+ * definition here, the compiler override the weak linking with this definition.
  * @return None
  */
 void HAL_UART_MspInit(
@@ -180,35 +220,74 @@ void HAL_UART_MspInit(
 
     /* Initialize the DMA we are going to use for this UART */
     HAL_DMA_Init((DMA_HandleTypeDef *)(uarts[port].dmaTx.handle));
-    /* Associate the initialized DMA handle to the the UART handle. STM HAL macro
+    /* Associate the initialized DMA handle to the the UART handle. STM HAL macros
+     *
+     * __HAL_LINKDMA(huart, hdmatx, (DMA_HandleTypeDef *)&(uarts[port].handleDmaTx));
+     * __HAL_LINKDMA(huart, hdmarx, (DMA_HandleTypeDef *)&(uarts[port].handleDmaRx));
+     *
      * for linking DMA to UART won't work here since we did a goofy thing with our
      * DMA handler by making it a pointer in a larger structure so we'll just do it
      * manually */
-//    __HAL_LINKDMA(huart, hdmatx, (DMA_HandleTypeDef *)&(uarts[port].handleDmaTx));
     huart->hdmatx = (DMA_HandleTypeDef *)(uarts[port].dmaTx.handle);
     uarts[port].dmaTx.handle->Parent = huart;
 
     HAL_DMA_Init((DMA_HandleTypeDef *)(uarts[port].dmaRx.handle));
-//    __HAL_LINKDMA(huart, hdmarx, (DMA_HandleTypeDef *)&(uarts[port].handleDmaRx));
     huart->hdmarx = (DMA_HandleTypeDef *)(uarts[port].dmaRx.handle);
     uarts[port].dmaRx.handle->Parent = huart;
 
-    /* Normally, you would enable interrupts here but we'll do that in UART_start() */
-
+    /* Normally, you would enable interrupts here but we'll do that in UART_start()
+     * This is useful if the driver is being used by a system running an RTOS and
+     * gives caller a chance to wrap up that initialization if needed. */
 }
 
 /**
  * @brief UART MSP De-Initialization
- *        This function frees the hardware resources used in this example:
- *          - Disable the Peripheral's clock
- *          - Revert GPIO configuration to their default state
+ *
+ * This function is a callback to the STM HAL functions that disable the UARTs.
+ * When calling UART_deInit"()", STM HAL code will call this function as a
+ * callback. This function then:
+ *
+ * 1. Stops the driver by calling UART_stop"()"
+ * 2. Calls HAL functions to disable the UART clocks
+ * 3. Calls HAL functions to disable the GPIO pins
+ * 4. Calls HAL functions to disable the DMA used.
+ *
+ * @note: This function is weakly defined in the STM HAL driver and by placing a
+ * definition here, the compiler override the weak linking with this definition.
  * @return None
  */
 void HAL_UART_MspDeInit(
         UART_HandleTypeDef* huart           /**< [in,out] UART handle pointer */
 )
 {
+    if (NULL == huart) {
+        return;
+    }
 
+    UartPort_t port = UART_MAX;
+    if (UART_MAX == (port = UART_findDeviceByHandle(huart))) {
+        return;
+    }
+
+    /* Stop the UART before taking down hardware just in case the interrupts are
+     * still enabled so we don't end up getting an interrupt while taking down
+     * hardware. */
+    if (ERR_NONE != UART_stop(port)) {
+        return;
+    }
+
+    /* Take down the pins */
+    HAL_GPIO_DeInit(uarts[port].gpioTxPort, uarts[port].gpioTx.Pin);
+    HAL_GPIO_DeInit(uarts[port].gpioRxPort, uarts[port].gpioRx.Pin);
+
+    /* Take down the DMA */
+    if (NULL != huart->hdmatx) {
+        HAL_DMA_DeInit(huart->hdmatx);
+    }
+
+    if (NULL != huart->hdmarx) {
+        HAL_DMA_DeInit(huart->hdmarx);
+    }
 }
 
 /* Private functions ---------------------------------------------------------*/

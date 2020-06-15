@@ -94,9 +94,20 @@ typedef struct {
  * @brief   Initialize a given UART
  *
  * @return  Error_t code that specifies success or failure
+ * @retval  ERR_NONE: success
  */
 Error_t UART_init(
         UartPort_t port                    /**< [in] which UART to initialize */
+);
+
+/**
+ * @brief   Initialize a given UART
+ *
+ * @return  Error_t code that specifies success or failure
+ * @retval  ERR_NONE: success
+ */
+Error_t UART_deInit(
+        UartPort_t port                  /**< [in] which UART to deinitialize */
 );
 
 /**
@@ -108,6 +119,7 @@ Error_t UART_init(
  * system is ready to correctly handle them.
  *
  * @return  Error_t code that specifies success or failure
+ * @retval  ERR_NONE: success
  */
 Error_t UART_start(
         UartPort_t port                         /**< [in] which UART to start */

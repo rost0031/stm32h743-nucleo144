@@ -173,6 +173,7 @@ A_SRCS                 += startup_stm32h743xx.s
 
 # C source files
 C_SRCS                 += main.c \
+                          bsp.c \
                           stm32h7xx_it.c \
                           system_stm32h7xx.c \
                           stm32h7xx_hal_msp.c \
@@ -189,11 +190,16 @@ C_SRCS                 += main.c \
                           stm32h7xx_hal_uart.c \
                           stm32h7xx_hal_uart_ex.c \
                           \
-                          stm32h7xx_nucleo_144.c \
-                          \
                           syscalls.c \
                           \
-                          uart.c
+                          gpio.c \
+                          gpio_data.c \
+                          uart.c \
+                          \
+                          button.c \
+                          button_data.c \
+                          led.c \
+                          led_data.c
                           
 A_OBJS                 = $(patsubst %.s,%.o,$(A_SRCS))
 A_OBJS_EXT             = $(addprefix $(BIN_DIR)/, $(A_OBJS))
