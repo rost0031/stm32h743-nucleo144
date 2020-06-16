@@ -1,22 +1,10 @@
 /**
- ******************************************************************************
- * @file    SPI_FullDuplex_ComIT/Src/main.c
- * @author  MCD Application Team
- * @brief   Main program body through the LL API
- ******************************************************************************
- * @attention
+ * @file    main.c
+ * @brief   Main for UART LL example
  *
- * <h2><center>&copy; Copyright (c) 2018 STMicroelectronics.
- * All rights reserved.</center></h2>
- *
- * This software component is licensed by ST under BSD 3-Clause license,
- * the "License"; You may not use this file except in compliance with the
- * License. You may obtain a copy of the License at:
- *                        opensource.org/licenses/BSD-3-Clause
- *
- ******************************************************************************
+ * Copyright 2020, Harry Rostovtsev.
+ * All other rights reserved.
  */
-//#define USE_FULL_LL_DRIVER
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -31,11 +19,15 @@
 #include "stm32h7xx_ll_usart.h"
 
 
+/* Compile-time called macros ------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
+/* Private defines -----------------------------------------------------------*/
 
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+//#define USE_FULL_LL_DRIVER
+
+/* Private macros ------------------------------------------------------------*/
+/* Private variables and Local objects ---------------------------------------*/
+
 uint32_t timeout = 0;
 
 /* GPIO Init Structure */
@@ -43,11 +35,11 @@ LL_GPIO_InitTypeDef  GPIO_InitStruct;
 
 /* Private function prototypes -----------------------------------------------*/
 static void     SystemClock_Config(void);
-static void     Error_Handler(void);
+//static void     Error_Handler(void);
 static void     LED1_Init(void);
 static void     LED3_Init(void);
 
-/* Private functions ---------------------------------------------------------*/
+/* Public and Exported functions ---------------------------------------------*/
 
 /**
  * @brief  Main program
@@ -63,6 +55,7 @@ int main(void)
 
     /* Initialize LED1 */
     LED1_Init();
+    LED3_Init();
 
     /* Communication done with success : Turn the GREEN LED on */
     LL_GPIO_SetOutputPin(LED1_GPIO_PORT, LED1_PIN);
@@ -86,22 +79,14 @@ int main(void)
     LL_GPIO_SetPinOutputType(GPIOD, LL_GPIO_PIN_9, LL_GPIO_OUTPUT_PUSHPULL);
     LL_GPIO_SetPinPull(GPIOD, LL_GPIO_PIN_9, LL_GPIO_PULL_UP);
 
-    /* Enable the peripheral clock of UART and set source */
-//    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
-//    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE);
-
-    LL_USART_ClockInitTypeDef usartClkInit = {0};
-//    LL_USART_ClockStructInit(&usartClkInit);
-//    usartClkInit.ClockOutput = LL_USART_CLOCK_ENABLE;
-//    usartClkInit.ClockPhase  = LL_USART_PHASE_1EDGE;
-//    usartClkInit.ClockPolarity = LL_USART_POLARITY_HIGH;
-//    usartClkInit.LastBitClockPulse = LL_USART_LASTCLKPULSE_OUTPUT;
-//    LL_USART_ClockInit(USART3, &usartClkInit);
-//    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1);
+    /* Enable the peripheral clock of UART */
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
 
-//    uint32_t Periphclk = LL_RCC_GetUSARTClockFreq(LL_RCC_USART234578_CLKSOURCE_PCLK1);
 
+#if 0
+    /* The function LL_USART_Init is horribly broken or is not meant to be used
+     * with this chip. It sets the baudrate incorrectly. Even the LL examples in
+     * manually configure the UARTs. Thanks again, STM. */
     LL_USART_InitTypeDef usartInit = {0};
     usartInit.BaudRate            = 115200U;
 	usartInit.DataWidth           = LL_USART_DATAWIDTH_8B;
@@ -111,7 +96,8 @@ int main(void)
     usartInit.TransferDirection	  = LL_USART_DIRECTION_TX_RX;
     usartInit.OverSampling        = LL_USART_OVERSAMPLING_16;
     usartInit.PrescalerValue      = LL_USART_PRESCALER_DIV1;
-//    LL_USART_Init( USART3, &usartInit);
+    LL_USART_Init( USART3, &usartInit);
+#endif
 
     /* TX/RX direction */
     LL_USART_SetTransferDirection(USART3, LL_USART_DIRECTION_TX_RX);
@@ -146,6 +132,8 @@ int main(void)
 #endif
     }
 }
+
+/* Private functions ---------------------------------------------------------*/
 
 /**
  * @brief  System Clock Configuration
@@ -259,14 +247,14 @@ void LED3_Init(void)
  * @param  None
  * @retval None
  */
-static void Error_Handler(void)
-{
-    /* Turn LED3 on */
-    LL_GPIO_SetOutputPin(LED3_GPIO_PORT, LED3_PIN);
-    while(1)
-    {
-    }
-}
+//static void Error_Handler(void)
+//{
+//    /* Turn LED3 on */
+//    LL_GPIO_SetOutputPin(LED3_GPIO_PORT, LED3_PIN);
+//    while(1)
+//    {
+//    }
+//}
 
 #ifdef  USE_FULL_ASSERT
 

@@ -1,23 +1,10 @@
 /**
-  ******************************************************************************
-  * @file    SPI_FullDuplex_ComIT/Src/stm32h7xx_it.c
-  * @author  MCD Application Team
-  * @brief   Main Interrupt Service Routines.
-  *          This file provides template for all exceptions handler and
-  *          peripherals interrupt service routine.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2018 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ * @file    stm32h7xx_it.c
+ * @brief   Interrupt vector function definitions
+ *
+ * Copyright 2020, Harry Rostovtsev.
+ * All other rights reserved.
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_it.h"
@@ -29,8 +16,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-
+/* Public and Exported functions ---------------------------------------------*/
 /******************************************************************************/
 /*            Cortex-M7 Processor Exceptions Handlers                         */
 /******************************************************************************/
@@ -141,3 +127,4 @@ void SysTick_Handler(void)
 /*  file (startup_stm32h7xx.s).                                               */
 /******************************************************************************/
 
+/* Private functions ---------------------------------------------------------*/
