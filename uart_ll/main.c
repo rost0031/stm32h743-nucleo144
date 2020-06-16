@@ -16,10 +16,7 @@
  *
  ******************************************************************************
  */
-#define USE_FULL_LL_DRIVER
-#define RCC
-#define USART3
-#define GPIOD
+//#define USE_FULL_LL_DRIVER
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -30,17 +27,9 @@
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_pwr.h"
 #include "stm32h7xx_ll_rcc.h"
-#include "stm32h7xx_ll_spi.h"
 #include "stm32h7xx_ll_utils.h"
 #include "stm32h7xx_ll_usart.h"
 
-/** @addtogroup STM32H7xx_LL_Examples
- * @{
- */
-
-/** @addtogroup SPI_FullDuplex_ComIT
- * @{
- */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -49,33 +38,14 @@
 /* Private variables ---------------------------------------------------------*/
 uint32_t timeout = 0;
 
-/* SPI Init Structure */
-LL_SPI_InitTypeDef   SPI_InitStruct;
-
 /* GPIO Init Structure */
 LL_GPIO_InitTypeDef  GPIO_InitStruct;
 
-uint8_t    SPIx_TxBuffer[] = "**** SPI_OneBoard_IT communication **** SPI_OneBoard_IT communication **** SPI_OneBoard_IT communication ****";
-uint32_t   SPIx_NbDataToTransmit = ((sizeof(SPIx_TxBuffer)/ sizeof(*SPIx_TxBuffer)) - 1);
-
-uint8_t    SPI1_RxBuffer[sizeof(SPIx_TxBuffer)];
-uint32_t   SPI1_ReceiveIndex = 0;
-uint32_t   SPI1_TransmitIndex = 0;
-
-uint8_t    SPI4_RxBuffer[sizeof(SPIx_TxBuffer)];
-uint32_t   SPI4_ReceiveIndex = 0;
-uint32_t   SPI4_TransmitIndex = 0;
-
 /* Private function prototypes -----------------------------------------------*/
 static void     SystemClock_Config(void);
-static uint16_t BufferCmp(uint8_t *pBuffer1, uint8_t *pBuffer2, uint16_t BufferLength);
 static void     Error_Handler(void);
 static void     LED1_Init(void);
 static void     LED3_Init(void);
-static void     GPIOPins_SPI1_Config(void);
-static void     GPIOPins_SPI4_Config(void);
-static void     SPI1_Config (void);
-static void     SPI4_Config (void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -93,13 +63,6 @@ int main(void)
 
     /* Initialize LED1 */
     LED1_Init();
-
-    /* Configure GPIO Pins of SPI1 */
-    GPIOPins_SPI1_Config();
-
-
-    /* Configure SPI1 Parametres */
-    SPI1_Config ();
 
     /* Communication done with success : Turn the GREEN LED on */
     LL_GPIO_SetOutputPin(LED1_GPIO_PORT, LED1_PIN);
@@ -134,10 +97,10 @@ int main(void)
 //    usartClkInit.ClockPolarity = LL_USART_POLARITY_HIGH;
 //    usartClkInit.LastBitClockPulse = LL_USART_LASTCLKPULSE_OUTPUT;
 //    LL_USART_ClockInit(USART3, &usartClkInit);
-    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1);
+//    LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1);
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
 
-    uint32_t Periphclk = LL_RCC_GetUSARTClockFreq(USART3);
+//    uint32_t Periphclk = LL_RCC_GetUSARTClockFreq(LL_RCC_USART234578_CLKSOURCE_PCLK1);
 
     LL_USART_InitTypeDef usartInit = {0};
     usartInit.BaudRate            = 115200U;
@@ -148,7 +111,16 @@ int main(void)
     usartInit.TransferDirection	  = LL_USART_DIRECTION_TX_RX;
     usartInit.OverSampling        = LL_USART_OVERSAMPLING_16;
     usartInit.PrescalerValue      = LL_USART_PRESCALER_DIV1;
-    LL_USART_Init( USART3, &usartInit);
+//    LL_USART_Init( USART3, &usartInit);
+
+    /* TX/RX direction */
+    LL_USART_SetTransferDirection(USART3, LL_USART_DIRECTION_TX_RX);
+
+    /* 8 data bit, 1 start bit, 1 stop bit, no parity */
+    LL_USART_ConfigCharacter(USART3, LL_USART_DATAWIDTH_8B, LL_USART_PARITY_NONE, LL_USART_STOPBITS_1);
+
+    LL_USART_SetBaudRate(USART3, SystemCoreClock/4, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
+
     LL_USART_Enable( USART3 );
 
     const uint8_t buffer[25] = "Hello World\r\n";
@@ -167,9 +139,9 @@ int main(void)
 			LL_USART_TransmitData8(USART3, buffer[i]);
     	}
 #else
-    	for(uint8_t i = 0; i < 0xff; i++) {
+    	for(uint8_t i = 0; i < sizeof(buffer); i++) {
 			while (!LL_USART_IsActiveFlag_TXE(USART3)) {}
-    		LL_USART_TransmitData8(USART3, i);
+    		LL_USART_TransmitData8(USART3, buffer[i]);
     	}
 #endif
     }
@@ -255,152 +227,6 @@ static void SystemClock_Config(void)
 }
 
 /**
- * @brief  Configure GPIO Pins of SPI1.
- * @param  None
- * @retval None
- */
-static void GPIOPins_SPI1_Config(void)
-{
-    /* (1) Enables GPIO clock and configures the SPI1 pins *******************/
-    /* Enable the peripheral clock of GPIOA */
-    LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOA);
-
-    /* SPI1 SCK GPIO pin configuration*/
-    GPIO_InitStruct.Pin       = LL_GPIO_PIN_5 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7;
-    GPIO_InitStruct.Mode      = LL_GPIO_MODE_ALTERNATE;
-    GPIO_InitStruct.Pull      = LL_GPIO_PULL_DOWN;
-    GPIO_InitStruct.Speed     = LL_GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
-    LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    /* (2) Configure NVIC for SPI1 transfer complete/error interrupts **********/
-    /* Set priority for SPI1_IRQn */
-    NVIC_SetPriority(SPI1_IRQn, 0);
-    /* Enable SPI1_IRQn */
-    NVIC_EnableIRQ(SPI1_IRQn);
-}
-
-/**
- * @brief  Configure GPIO Pins of SPI4.
- * @param  None
- * @retval None
- */
-static void GPIOPins_SPI4_Config(void)
-{
-    /* (1) Enables GPIO clock and configures the SPI4 pins ********************/
-    /* Enable the peripheral clock of GPIOE */
-    LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOE);
-
-    /* SPI2 SCK GPIO pin configuration*/
-    GPIO_InitStruct.Pin       = LL_GPIO_PIN_12 | LL_GPIO_PIN_13 | LL_GPIO_PIN_14;
-    GPIO_InitStruct.Mode      = LL_GPIO_MODE_ALTERNATE;
-    GPIO_InitStruct.Pull      = LL_GPIO_PULL_DOWN;
-    GPIO_InitStruct.Speed     = LL_GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
-    LL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-    /* (2) Configure NVIC for SPI4 transfer complete/error interrupts **********/
-    /* Set priority for SPI4_IRQn */
-    NVIC_SetPriority(SPI4_IRQn, 0);
-    /* Enable SPI1_IRQn           */
-    NVIC_EnableIRQ(SPI4_IRQn);
-}
-
-/**
- * @brief  Configure SPI1 parameters.
- * @param  None
- * @retval None
- */
-static void SPI1_Config (void)
-{
-    /* Configure SPI MASTER ****************************************************/
-    /* Enable SPI1 Clock */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
-
-    /* Configure the SPI1 parameters */
-    SPI_InitStruct.BaudRate          = LL_SPI_BAUDRATEPRESCALER_DIV256;
-    SPI_InitStruct.TransferDirection = LL_SPI_FULL_DUPLEX;
-    SPI_InitStruct.ClockPhase        = LL_SPI_PHASE_2EDGE;
-    SPI_InitStruct.ClockPolarity     = LL_SPI_POLARITY_HIGH;
-    SPI_InitStruct.BitOrder          = LL_SPI_MSB_FIRST;
-    SPI_InitStruct.DataWidth         = LL_SPI_DATAWIDTH_8BIT;
-    SPI_InitStruct.NSS               = LL_SPI_NSS_SOFT;
-    SPI_InitStruct.CRCCalculation    = LL_SPI_CRCCALCULATION_DISABLE;
-    SPI_InitStruct.Mode              = LL_SPI_MODE_MASTER;
-
-    LL_SPI_Init(SPI1, &SPI_InitStruct);
-
-    /* Lock GPIO for master to avoid glitches on the clock output */
-    LL_SPI_EnableGPIOControl(SPI1);
-    LL_SPI_EnableMasterRxAutoSuspend(SPI1);
-
-    /* Set number of date to transmit */
-    LL_SPI_SetTransferSize(SPI1, SPIx_NbDataToTransmit);
-
-    /* Enable SPI1 */
-    LL_SPI_Enable(SPI1);
-
-    /* Enable TXP Interrupt */
-    LL_SPI_EnableIT_TXP(SPI1);
-
-    /* Enable RXP Interrupt */
-    LL_SPI_EnableIT_RXP(SPI1);
-
-    /* Enable SPI Errors Interrupt */
-    LL_SPI_EnableIT_CRCERR(SPI1);
-    LL_SPI_EnableIT_UDR(SPI1);
-    LL_SPI_EnableIT_OVR(SPI1);
-    LL_SPI_EnableIT_EOT(SPI1);
-}
-
-/**
- * @brief  Configure SPI4 parameters.
- * @param  None
- * @retval None
- */
-static void SPI4_Config (void)
-{
-    /* Configure SPI SLAVE *****************************************************/
-    /* Enable SPI4 Clock */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI4);
-
-    /* Configure the SPI4 parameters */
-    SPI_InitStruct.BaudRate          = LL_SPI_BAUDRATEPRESCALER_DIV256;
-    SPI_InitStruct.TransferDirection = LL_SPI_FULL_DUPLEX;
-    SPI_InitStruct.ClockPhase        = LL_SPI_PHASE_2EDGE;
-    SPI_InitStruct.ClockPolarity     = LL_SPI_POLARITY_HIGH;
-    SPI_InitStruct.BitOrder          = LL_SPI_MSB_FIRST;
-    SPI_InitStruct.DataWidth         = LL_SPI_DATAWIDTH_8BIT;
-    SPI_InitStruct.NSS               = LL_SPI_NSS_SOFT;
-    SPI_InitStruct.CRCCalculation    = LL_SPI_CRCCALCULATION_DISABLE;
-    SPI_InitStruct.Mode              = LL_SPI_MODE_SLAVE;
-
-    LL_SPI_Init(SPI4, &SPI_InitStruct);
-
-    /* Lock GPIO for master to avoid glitches on the clock output */
-    LL_SPI_DisableGPIOControl(SPI4);
-    LL_SPI_DisableMasterRxAutoSuspend(SPI4);
-
-    /* Set number of date to transmit */
-    LL_SPI_SetTransferSize(SPI4, SPIx_NbDataToTransmit);
-
-    /* Enable SPI4 */
-    LL_SPI_Enable(SPI4);
-
-    /* Enable TXP Interrupt */
-    LL_SPI_EnableIT_TXP(SPI4);
-
-    /* Enable RXP Interrupt */
-    LL_SPI_EnableIT_RXP(SPI4);
-
-    /* Enable SPI Errors Interrupt */
-    LL_SPI_EnableIT_CRCERR(SPI4);
-    LL_SPI_EnableIT_UDR(SPI4);
-    LL_SPI_EnableIT_OVR(SPI4);
-    LL_SPI_EnableIT_EOT(SPI4);
-}
-
-/**
  * @brief  Initialize LED1 (Green LED).
  * @param  None
  * @retval None
@@ -442,145 +268,6 @@ static void Error_Handler(void)
     }
 }
 
-/**
- * @brief  Compares two buffers.
- * @param  pBuffer1, pBuffer2: buffers to be compared.
- * @param  BufferLength: buffer's length
- * @retval 0  : pBuffer1 identical to pBuffer2
- *         >0 : pBuffer1 differs from pBuffer2
- */
-static uint16_t BufferCmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint16_t BufferLength)
-{
-    while (BufferLength--)
-    {
-        if((*pBuffer1) != *pBuffer2)
-        {
-            return BufferLength;
-        }
-        pBuffer1++;
-        pBuffer2++;
-    }
-
-    return 0;
-}
-
-/**
- * @brief  Function called from SPI1 IRQ Handler when RXP flag is set
- *         Function is in charge of retrieving received byte from SPI lines.
- * @param  None
- * @retval None
- */
-void  SPI1_Rx_Callback(void)
-{
-    /* Read character in Data register.
-     * RXP flag is cleared by reading data in RXDR register */
-    SPI1_RxBuffer[SPI1_ReceiveIndex++] = LL_SPI_ReceiveData8(SPI1);
-}
-
-/**
- * @brief  Function called from SPI1 IRQ Handler when TXP flag is set
- *         Function is in charge  to transmit byte on SPI lines.
- * @param  None
- * @retval None
- */
-void  SPI1_Tx_Callback(void)
-{
-    /* Write character in Data register.
-     * TXP flag is cleared by filling data into TXDR register */
-    LL_SPI_TransmitData8(SPI1, SPIx_TxBuffer[SPI1_TransmitIndex++]);
-}
-
-/**
- * @brief  Function called from SPI1 IRQ Handler when EOT flag is set
- *         Function is in charge of transfer close down.
- * @param  None
- * @retval None
- */
-void  SPI1_EOT_Callback(void)
-{
-    LL_SPI_Disable(SPI1);
-    LL_SPI_DisableIT_TXP(SPI1);
-    LL_SPI_DisableIT_RXP(SPI1);
-    LL_SPI_DisableIT_CRCERR(SPI1);
-    LL_SPI_DisableIT_OVR(SPI1);
-    LL_SPI_DisableIT_UDR(SPI1);
-    LL_SPI_DisableIT_EOT(SPI1);
-}
-
-/**
- * @brief  Function called from SPI4 IRQ Handler when RXP flag is set
- *         Function is in charge of retrieving received byte from SPI lines.
- * @param  None
- * @retval None
- */
-void  SPI4_Rx_Callback(void)
-{
-    /* Read character in Data register.
-     * RXP flag is cleared by reading data in RXDR register */
-    SPI4_RxBuffer[SPI4_ReceiveIndex++] = LL_SPI_ReceiveData8(SPI4);
-}
-
-/**
- * @brief  Function called from SPI4 IRQ Handler when TXP flag is set
- *         Function is in charge  to transmit byte on SPI lines.
- * @param  None
- * @retval None
- */
-void  SPI4_Tx_Callback(void)
-{
-    /* Write character in Data register.
-     * TXP flag is cleared by filling data into TXDR register */
-    LL_SPI_TransmitData8(SPI4, SPIx_TxBuffer[SPI4_TransmitIndex++]);
-}
-
-/**
- * @brief  Function called from SPI4 IRQ Handler when EOT flag is set
- *         Function is in charge of transfer close down.
- * @param  None
- * @retval None
- */
-void  SPI4_EOT_Callback(void)
-{
-    LL_SPI_Disable(SPI4);
-    LL_SPI_DisableIT_TXP(SPI4);
-    LL_SPI_DisableIT_RXP(SPI4);
-    LL_SPI_DisableIT_CRCERR(SPI4);
-    LL_SPI_DisableIT_OVR(SPI4);
-    LL_SPI_DisableIT_UDR(SPI4);
-    LL_SPI_DisableIT_EOT(SPI4);
-}
-
-/**
- * @brief  Function called in case of error detected in SPI IT Handler
- * @param  None
- * @retval None
- */
-void SPI_TransferError_Callback(void)
-{
-
-    /* Disable ALL Interrupts */
-    LL_SPI_DisableIT_TXP(SPI1);
-    LL_SPI_DisableIT_RXP(SPI1);
-    LL_SPI_DisableIT_CRCERR(SPI1);
-    LL_SPI_DisableIT_OVR(SPI1);
-    LL_SPI_DisableIT_UDR(SPI1);
-    LL_SPI_DisableIT_EOT(SPI1);
-
-    /* Disable SPI1 */
-    LL_SPI_Disable(SPI1);
-
-    /* Disable ALL Interrupts */
-    LL_SPI_DisableIT_TXP(SPI4);
-    LL_SPI_DisableIT_RXP(SPI4);
-    LL_SPI_DisableIT_CRCERR(SPI4);
-    LL_SPI_DisableIT_OVR(SPI4);
-    LL_SPI_DisableIT_UDR(SPI4);
-    LL_SPI_DisableIT_EOT(SPI4);
-
-    /* Disable SPI4 */
-    LL_SPI_Disable(SPI4);
-}
-
 #ifdef  USE_FULL_ASSERT
 
 /**
@@ -601,13 +288,3 @@ void assert_failed(uint8_t* file, uint32_t line)
     }
 }
 #endif
-
-/**
- * @}
- */
-
-/**
- * @}
- */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -125,7 +125,8 @@ LINKFLAGS            += $(MFLAGS)  -Wl,--start-group -Wl,--end-group -Wl,-Map,$(
                         -Xlinker --defsym=__heap_size__=0x0
                      
 LINKFLAGS            += -Wl,--gc-sections
-DEFINES              += -DUSE_FULL_LL_DRIVER -DSTM32H743xx
+DEFINES              += -DSTM32H743xx
+#DEFINES              += -DUSE_FULL_LL_DRIVER 
 
 # Options dependent on build type
 ifeq (rel, $(CONF))       # Release configuration ............................

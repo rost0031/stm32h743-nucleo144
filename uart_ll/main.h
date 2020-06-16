@@ -36,6 +36,9 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
+//#define STM32H743xx
+//#define USE_FULL_LL_DRIVER
+
 /* Definition LED1-GREEN*/
 #define LED1_PIN                           LL_GPIO_PIN_0
 #define LED1_GPIO_PORT                     GPIOB
@@ -47,14 +50,6 @@
 #define LED3_GPIO_CLK_ENABLE()             LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB)
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void SPI1_Rx_Callback(void);
-void SPI1_Tx_Callback(void);
-void SPI1_EOT_Callback(void);
-void SPI_TransferError_Callback(void);
-
-void SPI4_Rx_Callback(void);
-void SPI4_Tx_Callback(void);
-void SPI4_EOT_Callback(void);
 
 #endif /* __MAIN_H */
 

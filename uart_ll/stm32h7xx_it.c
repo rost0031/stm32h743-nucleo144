@@ -23,13 +23,6 @@
 #include "stm32h7xx_it.h"
 #include "main.h"
 
-/** @addtogroup STM32H7xx_LL_Examples
-  * @{
-  */
-
-/** @addtogroup SPI_FullDuplex_ComIT
-  * @{
-  */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -148,86 +141,3 @@ void SysTick_Handler(void)
 /*  file (startup_stm32h7xx.s).                                               */
 /******************************************************************************/
 
-/**
-  * @brief  This function handles SPI1 interrupt request.
-  * @param  None
-  * @retval None
-  */
-void SPI1_IRQHandler(void)
-{
-
-    /* Check OVR/UDR flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_OVR(SPI1) || LL_SPI_IsActiveFlag_UDR(SPI1))
-    {
-      /* Call Error function */
-      SPI_TransferError_Callback();
-    }
-    /* Check RXP flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_RXP(SPI1) && LL_SPI_IsEnabledIT_RXP(SPI1))
-    {
-      /* Call function Reception Callback */
-      SPI1_Rx_Callback();
-      return;
-    }
-    /* Check TXP flag value in ISR register */
-    if((LL_SPI_IsActiveFlag_TXP(SPI1) && LL_SPI_IsEnabledIT_TXP(SPI1)))
-    {
-      /* Call function Reception Callback */
-      SPI1_Tx_Callback();
-      return;
-    }
-    /* Check EOT flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_EOT(SPI1) && LL_SPI_IsEnabledIT_EOT(SPI1))
-    {
-      /* Call function Reception Callback */
-      SPI1_EOT_Callback();
-      return;
-    }
-}
-
-/**
-  * @brief  This function handles SPI4 interrupt request.
-  * @param  None
-  * @retval None
-  */
-void SPI4_IRQHandler(void)
-{
-    /* Check OVR/UDR flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_OVR(SPI4) || LL_SPI_IsActiveFlag_UDR(SPI4))
-    {
-      /* Call Error function */
-      SPI_TransferError_Callback();
-    }
-    /* Check RXP flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_RXP(SPI4) && LL_SPI_IsEnabledIT_RXP(SPI4))
-    {
-      /* Call function Reception Callback */
-      SPI4_Rx_Callback();
-      return;
-    }
-    /* Check TXP flag value in ISR register */
-    if((LL_SPI_IsActiveFlag_TXP(SPI4) && LL_SPI_IsEnabledIT_TXP(SPI4)))
-    {
-      /* Call function Reception Callback */
-      SPI4_Tx_Callback();
-      return;
-    }
-    /* Check EOT flag value in ISR register */
-    if(LL_SPI_IsActiveFlag_EOT(SPI4) && LL_SPI_IsEnabledIT_EOT(SPI4))
-    {
-      /* Call function Reception Callback */
-      SPI4_EOT_Callback();
-      return;
-    }
-
-}
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
