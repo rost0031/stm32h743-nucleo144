@@ -8,22 +8,17 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "stm32h7xx.h"
 #include "stm32h743xx.h"
 #include "stm32h7xx_ll_bus.h"
+#include "stm32h7xx_ll_dma.h"
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_pwr.h"
 #include "stm32h7xx_ll_rcc.h"
 #include "stm32h7xx_ll_utils.h"
 #include "stm32h7xx_ll_usart.h"
-
-#include "stm32h7xx_ll_bus.h"
-#include "stm32h7xx_ll_gpio.h"
-#include "stm32h7xx_ll_pwr.h"
-#include "stm32h7xx_ll_rcc.h"
-#include "stm32h7xx_ll_spi.h"
-#include "stm32h7xx_ll_utils.h"
-
 
 /* Compile-time called macros ------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -41,6 +36,8 @@
 #define LED3_GPIO_PORT                     GPIOB
 #define LED3_GPIO_CLK_ENABLE()             LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB)
 
+#define BUFFER_SIZE                        (64)
+
 /* Private macros ------------------------------------------------------------*/
 /* Private variables and Local objects ---------------------------------------*/
 
@@ -48,35 +45,66 @@ uint32_t timeout = 0;
 
 /* GPIO Init Structure */
 LL_GPIO_InitTypeDef  GPIO_InitStruct;
+static uint8_t txBuffer[BUFFER_SIZE] = {0xA5};
+static uint8_t rxBuffer[BUFFER_SIZE] = {0xA5};
+static bool txBusy = false;
+static bool rxBusy = false;
 
 /* Private function prototypes -----------------------------------------------*/
+/**
+ * @brief  System Clock Configuration
+ *         The system Clock is configured as follow :
+ *            System Clock source            = PLL1 (HSE BYPASS)
+ *            SYSCLK(Hz)                     = 400000000 (CPU Clock)
+ *            HCLK(Hz)                       = 200000000 (AXI and AHBs Clock)
+ *            AHB Prescaler                  = 2
+ *            D1 APB3 Prescaler              = 2 (APB3 Clock  100MHz)
+ *            D2 APB1 Prescaler              = 2 (APB1 Clock  100MHz)
+ *            D2 APB2 Prescaler              = 2 (APB2 Clock  100MHz)
+ *            D3 APB4 Prescaler              = 2 (APB4 Clock  100MHz)
+ *            HSE Frequency(Hz)              = 8000000
+ *            PLL_M                          = 4
+ *            PLL_N                          = 400
+ *            PLL_P                          = 2
+ *            PLL_Q                          = 4
+ *            PLL_R                          = 2
+ *            VDD(V)                         = 3.3
+ *            Flash Latency(WS)              = 4
+ * @return None
+ */
 static void     SystemClock_Config(void);
 //static void     Error_Handler(void);
-static void     LED1_Init(void);
-static void     LED3_Init(void);
-
-/* Public and Exported functions ---------------------------------------------*/
 
 /**
- * @brief  Main program
- * @param  None
- * @retval None
+ * @brief  Initialize LED1 (Green LED).
+ * @return None
  */
+static void     LED1_Init(void);
+
+/**
+ * @brief  Initialize LED3 (Red LED).
+ * @return None
+ */
+static void     LED3_Init(void);
+static void DMA_init(void);
+static void DMA_configTx(const uint8_t* const pData, uint16_t len);
+static void DMA_configRx(uint8_t* const pData, uint16_t len);
+/* Public and Exported functions ---------------------------------------------*/
+
+/******************************************************************************/
 int main(void)
 {
     timeout = 0xFF;
 
-    /* Configure the system clock to 400 MHz */
-    SystemClock_Config();
+    SystemClock_Config();            /* Configure the system clock to 400 MHz */
 
     /* Initialize LED1 */
     LED1_Init();
     LED3_Init();
 
-    /* Communication done with success : Turn the GREEN LED on */
     LL_GPIO_SetOutputPin(LED1_GPIO_PORT, LED1_PIN);
 
-    /* Configure USART3 for debug output. Configure pins and uart peripheral */
+    /* Configure USART3 for debug input/output. Configure pins and uart peripheral */
 
     /* Enable PORTD clock for GPIO port D */
     LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOD);
@@ -105,7 +133,7 @@ int main(void)
      * manually configure the UARTs. Thanks again, STM. */
     LL_USART_InitTypeDef usartInit = {0};
     usartInit.BaudRate            = 115200U;
-	usartInit.DataWidth           = LL_USART_DATAWIDTH_8B;
+    usartInit.DataWidth           = LL_USART_DATAWIDTH_8B;
     usartInit.StopBits	          = LL_USART_STOPBITS_1;
     usartInit.Parity              = LL_USART_PARITY_NONE;
     usartInit.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
@@ -122,57 +150,30 @@ int main(void)
     LL_USART_ConfigCharacter(USART3, LL_USART_DATAWIDTH_8B, LL_USART_PARITY_NONE, LL_USART_STOPBITS_1);
 
     LL_USART_SetBaudRate(USART3, SystemCoreClock/4, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
+    LL_USART_SetHWFlowCtrl(USART3, LL_USART_HWCONTROL_NONE);
+
+    DMA_init();
 
     LL_USART_Enable( USART3 );
+
 
     const uint8_t buffer[25] = "Hello World\r\n";
     /* Infinite loop */
     while (1) {
-#if 0
-    	for( uint8_t i = 0; i < 13; i++ ) {
-			/* Wait for TXE flag to be raised */
-			while (!LL_USART_IsActiveFlag_TXE(USART3))
-			{
 
-			}
-
-			/* Write character in Transmit Data register.
-			   TXE flag is cleared by writing data in TDR register */
-			LL_USART_TransmitData8(USART3, buffer[i]);
-    	}
-#else
-    	for(uint8_t i = 0; i < sizeof(buffer); i++) {
-			while (!LL_USART_IsActiveFlag_TXE(USART3)) {}
-    		LL_USART_TransmitData8(USART3, buffer[i]);
-    	}
-#endif
+        if( !txBusy) {
+            DMA_configTx(buffer, sizeof(buffer));
+        }
+//        for(uint8_t i = 0; i < sizeof(buffer); i++) {
+//            while (!LL_USART_IsActiveFlag_TXE(USART3)) {}
+//            LL_USART_TransmitData8(USART3, buffer[i]);
+//        }
     }
 }
 
 /* Private functions ---------------------------------------------------------*/
 
-/**
- * @brief  System Clock Configuration
- *         The system Clock is configured as follow :
- *            System Clock source            = PLL1 (HSE BYPASS)
- *            SYSCLK(Hz)                     = 400000000 (CPU Clock)
- *            HCLK(Hz)                       = 200000000 (AXI and AHBs Clock)
- *            AHB Prescaler                  = 2
- *            D1 APB3 Prescaler              = 2 (APB3 Clock  100MHz)
- *            D2 APB1 Prescaler              = 2 (APB1 Clock  100MHz)
- *            D2 APB2 Prescaler              = 2 (APB2 Clock  100MHz)
- *            D3 APB4 Prescaler              = 2 (APB4 Clock  100MHz)
- *            HSE Frequency(Hz)              = 8000000
- *            PLL_M                          = 4
- *            PLL_N                          = 400
- *            PLL_P                          = 2
- *            PLL_Q                          = 4
- *            PLL_R                          = 2
- *            VDD(V)                         = 3.3
- *            Flash Latency(WS)              = 4
- * @param  None
- * @retval None
- */
+/******************************************************************************/
 static void SystemClock_Config(void)
 {
     /* Power Configuration */
@@ -230,11 +231,7 @@ static void SystemClock_Config(void)
     SystemCoreClock = 400000000;
 }
 
-/**
- * @brief  Initialize LED1 (Green LED).
- * @param  None
- * @retval None
- */
+/******************************************************************************/
 void LED1_Init(void)
 {
     /* Enable the LED1 Clock */
@@ -244,11 +241,7 @@ void LED1_Init(void)
     LL_GPIO_SetPinMode(LED1_GPIO_PORT, LED1_PIN, LL_GPIO_MODE_OUTPUT);
 }
 
-/**
- * @brief  Initialize LED3 (Red LED).
- * @param  None
- * @retval None
- */
+/******************************************************************************/
 void LED3_Init(void)
 {
     /* Enable the LED3 Clock */
@@ -258,10 +251,113 @@ void LED3_Init(void)
     LL_GPIO_SetPinMode(LED3_GPIO_PORT, LED3_PIN, LL_GPIO_MODE_OUTPUT);
 }
 
+/******************************************************************************/
+void UART_isr(void)
+{
+
+}
+
+/******************************************************************************/
+void DMA_txDone(void)
+{
+    if(LL_DMA_IsActiveFlag_TC1(DMA2) == 1) {
+        LL_DMA_ClearFlag_TC1(DMA2);
+    }
+    else if(LL_DMA_IsActiveFlag_TE1(DMA2) == 1)
+    {
+        LL_DMA_ClearFlag_TE1(DMA2);
+    }
+
+    txBusy = false;
+}
+
+/******************************************************************************/
+void DMA_rxDone(void)
+{
+    if(LL_DMA_IsActiveFlag_TC7(DMA2) == 1) {
+        LL_DMA_ClearFlag_TC7(DMA2);
+    }
+    else if(LL_DMA_IsActiveFlag_TE7(DMA2) == 1)
+    {
+        LL_DMA_ClearFlag_TE7(DMA2);
+    }
+}
+
+/******************************************************************************/
+static void DMA_init(void)
+{
+    /* (1) Enable the clock of DMA2 */
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
+
+    /* Configuration of the DMA parameters can be done using unitary functions or using the specific configure function */
+    /* Unitary Functions */
+
+    LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_7, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+    LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_7, LL_DMA_PRIORITY_HIGH);
+    LL_DMA_SetMode(DMA2, LL_DMA_STREAM_7, LL_DMA_MODE_NORMAL);
+    LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_STREAM_7, LL_DMA_PERIPH_NOINCREMENT);
+    LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_STREAM_7, LL_DMA_MEMORY_INCREMENT);
+    LL_DMA_SetPeriphSize(DMA2, LL_DMA_STREAM_7, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetMemorySize(DMA2, LL_DMA_STREAM_7, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_7, LL_DMAMUX1_REQ_USART3_TX);
+    /* Errata workaround for UART/DMA lockup */
+    LL_DMA_EnableBufferableTransfer(DMA2, LL_DMA_STREAM_7);
+
+//    LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_7, BUFFER_SIZE);
+//    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_7, (uint32_t)txBuffer, USART3->TDR, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+    /* Configuration of the DMA parameters can be done using unitary functions or using the specific configure function */
+    /* Unitary Functions */
+    LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_1, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+    LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_1, LL_DMA_PRIORITY_HIGH);
+    LL_DMA_SetMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MODE_NORMAL);
+    LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_PERIPH_NOINCREMENT);
+    LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MEMORY_INCREMENT);
+    LL_DMA_SetPeriphSize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetMemorySize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_1, LL_DMAMUX1_REQ_USART3_RX);
+    /* Errata workaround for UART/DMA lockup */
+    LL_DMA_EnableBufferableTransfer(DMA2, LL_DMA_STREAM_1);
+
+
+//    LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_1, BUFFER_SIZE);
+//    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_1, USART3->RDR, (uint32_t)rxBuffer, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+    /* (3) Configure NVIC for DMA transfer complete/error interrupts */
+    LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_7);
+    LL_DMA_EnableIT_TE(DMA2, LL_DMA_STREAM_7);
+    NVIC_SetPriority(DMA2_Stream7_IRQn, 0);
+    NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+
+    /* (3) Configure NVIC for DMA transfer complete/error interrupts */
+    LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_1);
+    LL_DMA_EnableIT_TE(DMA2, LL_DMA_STREAM_1);
+    NVIC_SetPriority(DMA2_Stream1_IRQn, 0);
+    NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+}
+
+/******************************************************************************/
+static void DMA_configTx(const uint8_t* const pData, uint16_t len)
+{
+    LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_7, len);
+    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_7, (uint32_t)pData, USART3->TDR, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+    LL_DMA_EnableStream(DMA2, LL_DMA_STREAM_7);
+    txBusy = true;
+}
+
+/******************************************************************************/
+static void DMA_configRx(uint8_t* const pData, uint16_t len)
+{
+    LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_1, BUFFER_SIZE);
+    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_1, USART3->RDR, (uint32_t)rxBuffer, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+    LL_DMA_EnableStream(DMA2, LL_DMA_STREAM_1);
+}
+
+
+
 /**
  * @brief  This function is executed in case of error occurrence.
- * @param  None
- * @retval None
+ * @return None
  */
 //static void Error_Handler(void)
 //{
@@ -279,7 +375,7 @@ void LED3_Init(void)
  *         where the assert_param error has occurred.
  * @param  file: pointer to the source file name
  * @param  line: assert_param error line source number
- * @retval None
+ * @return None
  */
 void assert_failed(uint8_t* file, uint32_t line)
 {

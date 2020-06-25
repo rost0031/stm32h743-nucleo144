@@ -80,7 +80,7 @@ int main(void)
 #ifdef CACHE_ENABLED
     SCB_EnableDCache();
 #else
-    SCB_DisableDCache();
+//    SCB_DisableDCache();
 #endif
     /* Configure the system clock to 400 MHz */
     SystemClock_Config();
