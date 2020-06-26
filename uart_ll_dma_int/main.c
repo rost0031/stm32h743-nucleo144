@@ -126,7 +126,6 @@ int main(void)
     /* Enable the peripheral clock of UART */
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3);
 
-
 #if 0
     /* The function LL_USART_Init is horribly broken or is not meant to be used
      * with this chip. It sets the baudrate incorrectly. Even the LL examples in
@@ -143,6 +142,8 @@ int main(void)
     LL_USART_Init( USART3, &usartInit);
 #endif
 
+    DMA_init();
+
     /* TX/RX direction */
     LL_USART_SetTransferDirection(USART3, LL_USART_DIRECTION_TX_RX);
 
@@ -152,10 +153,15 @@ int main(void)
     LL_USART_SetBaudRate(USART3, SystemCoreClock/4, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
     LL_USART_SetHWFlowCtrl(USART3, LL_USART_HWCONTROL_NONE);
 
-    DMA_init();
+    LL_USART_ConfigAsyncMode(USART3);
+    LL_USART_EnableDMAReq_RX(USART3);
+    LL_USART_EnableDMAReq_TX(USART3);
 
     LL_USART_Enable( USART3 );
 
+
+    /* Polling USART3 initialization */
+    while (!LL_USART_IsActiveFlag_TEACK(USART3) || !LL_USART_IsActiveFlag_REACK(USART3)) {}
 
     const uint8_t buffer[25] = "Hello World\r\n";
     /* Infinite loop */
@@ -260,12 +266,12 @@ void UART_isr(void)
 /******************************************************************************/
 void DMA_txDone(void)
 {
-    if(LL_DMA_IsActiveFlag_TC1(DMA2) == 1) {
-        LL_DMA_ClearFlag_TC1(DMA2);
+    if(LL_DMA_IsActiveFlag_TC7(DMA2) == 1) {
+        LL_DMA_ClearFlag_TC7(DMA2);
     }
-    else if(LL_DMA_IsActiveFlag_TE1(DMA2) == 1)
+    else if(LL_DMA_IsActiveFlag_TE7(DMA2) == 1)
     {
-        LL_DMA_ClearFlag_TE1(DMA2);
+        LL_DMA_ClearFlag_TE7(DMA2);
     }
 
     txBusy = false;
@@ -274,13 +280,14 @@ void DMA_txDone(void)
 /******************************************************************************/
 void DMA_rxDone(void)
 {
-    if(LL_DMA_IsActiveFlag_TC7(DMA2) == 1) {
-        LL_DMA_ClearFlag_TC7(DMA2);
+    if(LL_DMA_IsActiveFlag_TC1(DMA2) == 1) {
+        LL_DMA_ClearFlag_TC1(DMA2);
     }
-    else if(LL_DMA_IsActiveFlag_TE7(DMA2) == 1)
+    else if(LL_DMA_IsActiveFlag_TE1(DMA2) == 1)
     {
-        LL_DMA_ClearFlag_TE7(DMA2);
+        LL_DMA_ClearFlag_TE1(DMA2);
     }
+    rxBusy = false;
 }
 
 /******************************************************************************/
@@ -292,6 +299,7 @@ static void DMA_init(void)
     /* Configuration of the DMA parameters can be done using unitary functions or using the specific configure function */
     /* Unitary Functions */
 
+    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_7, LL_DMAMUX1_REQ_USART3_TX);
     LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_7, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
     LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_7, LL_DMA_PRIORITY_HIGH);
     LL_DMA_SetMode(DMA2, LL_DMA_STREAM_7, LL_DMA_MODE_NORMAL);
@@ -299,7 +307,8 @@ static void DMA_init(void)
     LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_STREAM_7, LL_DMA_MEMORY_INCREMENT);
     LL_DMA_SetPeriphSize(DMA2, LL_DMA_STREAM_7, LL_DMA_PDATAALIGN_BYTE);
     LL_DMA_SetMemorySize(DMA2, LL_DMA_STREAM_7, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_7, LL_DMAMUX1_REQ_USART3_TX);
+    LL_DMA_DisableFifoMode(DMA2, LL_DMA_STREAM_7);
+    LL_DMA_SetPeriphAddress(DMA2, LL_DMA_STREAM_7, LL_USART_DMA_GetRegAddr(USART3, LL_USART_DMA_REG_DATA_TRANSMIT));
     /* Errata workaround for UART/DMA lockup */
     LL_DMA_EnableBufferableTransfer(DMA2, LL_DMA_STREAM_7);
 
@@ -308,16 +317,16 @@ static void DMA_init(void)
 
     /* Configuration of the DMA parameters can be done using unitary functions or using the specific configure function */
     /* Unitary Functions */
-    LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_1, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-    LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_1, LL_DMA_PRIORITY_HIGH);
-    LL_DMA_SetMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MODE_NORMAL);
-    LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_PERIPH_NOINCREMENT);
-    LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MEMORY_INCREMENT);
-    LL_DMA_SetPeriphSize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetMemorySize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_1, LL_DMAMUX1_REQ_USART3_RX);
-    /* Errata workaround for UART/DMA lockup */
-    LL_DMA_EnableBufferableTransfer(DMA2, LL_DMA_STREAM_1);
+//    LL_DMA_SetDataTransferDirection(DMA2, LL_DMA_STREAM_1, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+//    LL_DMA_SetStreamPriorityLevel(DMA2, LL_DMA_STREAM_1, LL_DMA_PRIORITY_HIGH);
+//    LL_DMA_SetMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MODE_NORMAL);
+//    LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_PERIPH_NOINCREMENT);
+//    LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_STREAM_1, LL_DMA_MEMORY_INCREMENT);
+//    LL_DMA_SetPeriphSize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
+//    LL_DMA_SetMemorySize(DMA2, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_BYTE);
+//    LL_DMA_SetPeriphRequest(DMA2, LL_DMA_STREAM_1, LL_DMAMUX1_REQ_USART3_RX);
+//    /* Errata workaround for UART/DMA lockup */
+//    LL_DMA_EnableBufferableTransfer(DMA2, LL_DMA_STREAM_1);
 
 
 //    LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_1, BUFFER_SIZE);
@@ -330,17 +339,18 @@ static void DMA_init(void)
     NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
     /* (3) Configure NVIC for DMA transfer complete/error interrupts */
-    LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_1);
-    LL_DMA_EnableIT_TE(DMA2, LL_DMA_STREAM_1);
-    NVIC_SetPriority(DMA2_Stream1_IRQn, 0);
-    NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+//    LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_1);
+//    LL_DMA_EnableIT_TE(DMA2, LL_DMA_STREAM_1);
+//    NVIC_SetPriority(DMA2_Stream1_IRQn, 0);
+//    NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 }
 
 /******************************************************************************/
 static void DMA_configTx(const uint8_t* const pData, uint16_t len)
 {
+//    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_7, (uint32_t)pData, USART3->TDR, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+    LL_DMA_SetMemoryAddress(DMA2, LL_DMA_STREAM_7, (uint32_t)pData);
     LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_7, len);
-    LL_DMA_ConfigAddresses(DMA2, LL_DMA_STREAM_7, (uint32_t)pData, USART3->TDR, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
     LL_DMA_EnableStream(DMA2, LL_DMA_STREAM_7);
     txBusy = true;
 }
