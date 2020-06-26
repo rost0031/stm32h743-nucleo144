@@ -213,13 +213,23 @@ void LED3_Init(void)
 /******************************************************************************/
 void UART_isr(void)
 {
-    /* Check for IDLE line interrupt */
+    /* Check for interrupt flags and errors */
+    if (LL_USART_IsActiveFlag_ORE(USART3)) {                /* Overrun error? */
+        LL_USART_ClearFlag_ORE(USART3);                 /* Clear Overrun flag */
+        rxBytes = sizeof(rxBuffer);
+        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
+    }
+
+
     if (LL_USART_IsEnabledIT_IDLE(USART3) && LL_USART_IsActiveFlag_IDLE(USART3)) {
         LL_USART_ClearFlag_IDLE(USART3);        /* Clear IDLE line flag */
         /* Calculate current position in buffer */
         rxBytes = sizeof(rxBuffer) - LL_DMA_GetDataLength(DMA2, LL_DMA_STREAM_1);
+        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
         rxDataRcvd = true;
     }
+
+    rxBusy = false;
 }
 
 /******************************************************************************/
@@ -239,9 +249,12 @@ void DMA_rxDone(void)
 {
     if (LL_DMA_IsActiveFlag_TC1(DMA2) == 1) {
         LL_DMA_ClearFlag_TC1(DMA2);
+        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
     } else if(LL_DMA_IsActiveFlag_TE1(DMA2) == 1) {
         LL_DMA_ClearFlag_TE1(DMA2);
+        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
     }
+
     rxBusy = false;
 }
 
