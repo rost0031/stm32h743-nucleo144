@@ -41,7 +41,7 @@ static UartDevData_t uartData[UART_MAX] = {
 /**
  * @brief   Array of all UART TX DMA configurations
  */
-static DmaDevData_t dmaTx[UART_MAX] = {
+static UartDmaData_t dmaTx[UART_MAX] = {
         [UART_DBG] = {
                 .handle.Instance             = DMA2_Stream7,
                 .handle.Init = {
@@ -67,7 +67,7 @@ static DmaDevData_t dmaTx[UART_MAX] = {
 /**
  * @brief   Array of all UART RX DMA configurations
  */
-static DmaDevData_t dmaRx[UART_MAX] = {
+static UartDmaData_t dmaRx[UART_MAX] = {
         [UART_DBG] = {
                 .handle.Instance             = DMA2_Stream1,
                 .handle.Init = {

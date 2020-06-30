@@ -17,14 +17,14 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 #include "uarts.h"
+#include "dma.h"
 #include "buffers.h"
 #include "board_defs.h"
 #include "gpio_pins.h"
 
 #include "stm32h7xx.h"
 #include "stm32h743xx.h"
-#include "stm32h7xx_hal.h"
-#include "stm32h7xx_hal_uart.h"
+#include "stm32h7xx_ll_usart.h"
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -38,31 +38,28 @@ typedef void (*UartCallback_t)(
 );
 
 /**
- * @brief   UART buffer management
+ * @brief   DMA structure for use with UART
+ * The only reason this is a separate structure is to allow quick checking for
+ * whether a pointer to this is NULL so the driver knows whether to do anything
+ * with DMA or not. This structure can still be const and live in flash.
  */
 typedef struct {
-    Buffer_t bufferTx;                                     /**< Buffer for TX */
-    Buffer_t bufferRx;                                     /**< Buffer for RX */
-} UartBuf_t;
-
-typedef struct {
-    DMA_HandleTypeDef   handle;                               /**< DMA handle */
-    const IRQn_Type     irq;                              /**< DMA IRQ number */
-    const IRQPrio_t     prio;                           /**< DMA IRQ priority */
+    const Dma_t         channel;                              /**< DMA channel*/
 } UartDmaData_t;
 
 /**
- * @brief   UART interrupt/callback data
+ * @brief   UART device data
  *
  * This structure type allows specification of all data needed to control and
- * configure UART interrupts.
+ * configure UART.
  */
 typedef struct {
-    UART_HandleTypeDef  handle;                   /**< Configurable UART data */
-    const IRQn_Type     irq;                            /**< Interrupt number */
-    const IRQPrio_t     prio;                         /**< Interrupt priority */
-    UartCallback_t      callbackDataSent;  /**< Callback to call on data sent */
-    UartCallback_t      callbackDataRcvd;  /**< Callback to call on data rcvd */
+    USART_TypeDef*       const base;            /**< UART memory base address */
+    LL_USART_InitTypeDef       init;            /**< UART initialization data */
+    bool                   isTxBusy;       /**< Is the UART TX currently busy */
+    bool                   isRxBusy;       /**< Is the UART RX currently busy */
+    UartCallback_t callbackDataSent;       /**< Callback to call on data sent */
+    UartCallback_t callbackDataRcvd;       /**< Callback to call on data rcvd */
 } UartDevData_t;
 
 /**
@@ -77,18 +74,19 @@ typedef struct {
  */
 typedef struct {
     /* UART GPIO pin configurations */
-    const GpioPin_t         gpioPinTx;       /**< System GPIO pin for UART TX */
-    const GpioPin_t         gpioPinRx;       /**< System GPIO pin for UART RX */
+    const GpioPin_t   gpioPinTx;             /**< System GPIO pin for UART TX */
+    const GpioPin_t   gpioPinRx;             /**< System GPIO pin for UART RX */
 
     /* General UART settings */
-    UartDevData_t* const    pUart;                      /**< UART device data */
+    UartDevData_t* const pUart;                         /**< UART device data */
+    const uint32_t    clk; /**< BUS_LL_EC_APB1_GRP1_PERIPH group clock select */
+    const IRQn_Type   irq;                              /**< Interrupt number */
+    const IRQPrio_t   prio;                           /**< Interrupt priority */
 
     /* DMA */
-    UartDmaData_t*  const    pDmaTx;              /**< UART DMA TX device data */
-    UartDmaData_t*  const    pDmaRx;              /**< UART DMA RX device data */
+    const UartDmaData_t* const pDmaTx;            /**< UART DMA TX device data */
+    const UartDmaData_t* const pDmaRx;            /**< UART DMA RX device data */
 
-    /* Dynamic data */
-    UartBuf_t*     const    pBufMgr;              /**< UART buffer management */
 } UartData_t;
 
 /* Exported constants --------------------------------------------------------*/

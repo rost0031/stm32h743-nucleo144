@@ -1,6 +1,6 @@
 ##############################################################################
 # Product: Makefile for STM32H743-Nucleo144 DevKit bring up (Bringup Demo)
-#                
+#
 # Copyright (C) 2020 Harry Rostovtsev. All rights reserved.
 #
 ##############################################################################
@@ -23,13 +23,14 @@ NOW                        := $(shell date +%Y%m%d%H%M%S | tr ' :' '__')
 
 # Output file basename (should be the same as the directory name)
 TARGET                     := stm32h743-nucleo144
-PROJECT_BASE               := uart_ll_dma_int
+PROJECT_BASE               := proj2_drv_frmwork
 PROJECT_NAME               := $(PROJECT_BASE)-$(TARGET)
 TARGET_HEX                  = $(BIN_DIR)/$(PROJECT_NAME).hex
 TARGET_ELF                  = $(BIN_DIR)/$(PROJECT_NAME).elf
 TARGET_BIN                  = $(BIN_DIR)/$(PROJECT_NAME).bin
 TARGET_MAP                  = $(BIN_DIR)/$(PROJECT_NAME).map
-                  
+
+                 
 #-----------------------------------------------------------------------------
 # DIRECTORIES
 #-----------------------------------------------------------------------------
@@ -46,10 +47,15 @@ CMSIS_DEV_INC_DIR       = $(CMSIS_DEV_DIR)/ST/STM32H7xx/Include
 DEV_DRV_DIR             = $(TOP_DIR)/STM32
 DEV_DRV_INC_DIR         = $(DEV_DRV_DIR)/inc
 DEV_DRV_SRC_DIR         = $(DEV_DRV_DIR)/src
-BRD_DRV_INC_DIR         = $(BRD_DRV_DIR)/inc
-BRD_DRV_SRC_DIR         = $(BRD_DRV_DIR)/src
+BRD_DRV_DIR             = $(DEV_DRV_DIR)/STM32H7xx_Nucleo_144
+BRD_DRV_INC_DIR         = $(BRD_DRV_DIR)
+BRD_DRV_SRC_DIR         = $(BRD_DRV_DIR)
 
 PROJ_DIR                = $(TOP_DIR)/$(PROJECT_BASE)
+SRC_DIR                 = $(PROJ_DIR)/src
+APP_DIR                 = $(SRC_DIR)/app
+BSP_DIR                 = $(SRC_DIR)/bsp
+SYS_DIR                 = $(SRC_DIR)/sys
 
 # Get info about the compiler from our common mk file
 -include $(TOP_DIR)/make/compiler.mk
@@ -61,7 +67,9 @@ PROJ_DIR                = $(TOP_DIR)/$(PROJECT_BASE)
 # SOURCE VIRTUAL DIRECTORIES
 #-----------------------------------------------------------------------------
 VPATH                  += \
-                          $(PROJ_DIR) \
+                          $(APP_DIR) \
+                          $(BSP_DIR) \
+                          $(SYS_DIR) \
                           $(TOP_DIR) \
                           $(DEV_DRV_SRC_DIR) \
                           $(BRD_DRV_SRC_DIR)                         
@@ -70,7 +78,9 @@ VPATH                  += \
 # INCLUDE DIRECTORIES
 #-----------------------------------------------------------------------------
 INCLUDES               += \
-                         -I$(PROJ_DIR) \
+                         -I$(APP_DIR) \
+                         -I$(BSP_DIR) \
+                         -I$(SYS_DIR) \
                          -I$(TOP_DIR) \
                          -I$(CMSIS_INC_DIR) \
                          -I$(CMSIS_DEV_INC_DIR) \
@@ -124,8 +134,6 @@ LINKFLAGS            += $(MFLAGS)  -Wl,--start-group -Wl,--end-group -Wl,-Map,$(
                         -Xlinker --defsym=__heap_size__=0x0
                      
 LINKFLAGS            += -Wl,--gc-sections
-DEFINES              += -DSTM32H743xx
-#DEFINES              += -DUSE_FULL_LL_DRIVER 
 
 # Options dependent on build type
 ifeq (rel, $(CONF))       # Release configuration ............................
@@ -173,20 +181,22 @@ A_SRCS                 += startup_stm32h743xx.s
 # C source files
 C_SRCS                 += main.c \
                           bsp.c \
-                          button.c \
-                          button_data.c \
+                          stm32h7xx_it.c \
+                          system_stm32h7xx.c \
+                          \
+                          btn.c \
+                          btn_data.c \
+                          dma.c \
+                          dma_data.c \
                           gpio.c \
                           gpio_data.c \
                           led.c \
                           led_data.c \
                           uart.c \
                           uart_data.c \
-                          stm32h7xx_it.c \
-                          system_stm32h7xx.c \
                           \
+                          stm32h7xx_ll_dma.c \
                           stm32h7xx_ll_gpio.c \
-                          stm32h7xx_ll_rcc.c \
-                          stm32h7xx_ll_spi.c \
                           stm32h7xx_ll_usart.c \
                           \
                           syscalls.c
@@ -272,3 +282,4 @@ show:
 	@echo TARGET_ELF       = $(TARGET_ELF)
 	@echo VPATH            = $(VPATH)
 	@echo INCLUDES         = $(INCLUDES)
+	@echo PROJ_DIR         = $(PROJ_DIR)

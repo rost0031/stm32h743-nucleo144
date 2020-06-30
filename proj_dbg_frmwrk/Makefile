@@ -55,7 +55,6 @@ PROJ_DIR                = $(TOP_DIR)/$(PROJECT_BASE)
 # Get info about the compiler from our common mk file
 -include $(TOP_DIR)/make/compiler.mk
 
-
 # version.mk also must contain the version number of components
 -include version.mk
 
