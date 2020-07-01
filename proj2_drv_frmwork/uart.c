@@ -25,31 +25,32 @@
 static UartData_t *pUarts = NULL;                   /**< pointer to UART data */
 
 /* Private function prototypes -----------------------------------------------*/
+/**
+ * @brief   Callback for DMA to call when finished.
+ */
+static void UART_callbackDmaTxDone(
+        Dma_t channel,
+        const uint8_t* const pData,
+        uint16_t bytes
+);
 
-///**
-// * @brief   Find device by handle
-// * @return  Uart_t port
-// */
-//static Uart_t UART_findDeviceByHandle(
-//        UART_HandleTypeDef* huart           /**< [in,out] UART handle pointer */
-//);
+/**
+ * @brief   Callback for DMA to call when finished.
+ */
+static void UART_callbackDmaRxDone(
+        Dma_t channel,
+        const uint8_t* const pData,
+        uint16_t bytes
+);
 
-///**
-// * @brief   Find device by instance
-// * @return  Uart_t port
-// */
-//static Uart_t UART_findDeviceByInstance(
-//        USART_TypeDef* instance           /**< [in,out] UART instance pointer */
-//);
-//
-///**
-// * @brief   Get DMA handle by instance
-// * @return  Uart_t port
-// */
-//static DMA_HandleTypeDef* UART_getDmaHandleByInstance(
-//        DMA_Stream_TypeDef* instance              /**< [in,out] DMA instance pointer */
-//);
-//
+/**
+ * @brief   Get UART port from DMA channel.
+ * @return  Uart_t port which has the passed in channel
+ */
+static Uart_t UART_getPortFromDmaChannel(
+        Dma_t channel
+);
+
 /* Public and Exported functions ---------------------------------------------*/
 
 /******************************************************************************/
@@ -91,10 +92,10 @@ Error_t UART_init(Uart_t port)
     LL_USART_SetHWFlowCtrl(pUarts[port].pUart->base,
             pUarts[port].pUart->init.HardwareFlowControl);
 
-    LL_USART_SetTXFIFOThreshold(pUarts[port].pUart->base, LL_USART_FIFOTHRESHOLD_7_8);
-    LL_USART_SetRXFIFOThreshold(pUarts[port].pUart->base, LL_USART_FIFOTHRESHOLD_7_8);
-    LL_USART_EnableFIFO(pUarts[port].pUart->base);
-    LL_USART_ConfigAsyncMode(pUarts[port].pUart->base);
+//    LL_USART_SetTXFIFOThreshold(pUarts[port].pUart->base, LL_USART_FIFOTHRESHOLD_7_8);
+//    LL_USART_SetRXFIFOThreshold(pUarts[port].pUart->base, LL_USART_FIFOTHRESHOLD_7_8);
+//    LL_USART_EnableFIFO(pUarts[port].pUart->base);
+//    LL_USART_ConfigAsyncMode(pUarts[port].pUart->base);
 
     /* If DMA has been configured, initialize it. */
     if (NULL != pUarts[port].pDmaTx) {
@@ -252,7 +253,7 @@ Error_t UART_sendDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
         status = ERR_HW_CONFIG; goto END;
     }
 
-    if (ERR_NONE != (status = DMA_transfer(pUarts[port].pDmaTx->channel, pData, dataLen))) {
+    if (ERR_NONE != (status = DMA_startTransfer(pUarts[port].pDmaTx->channel, pData, dataLen))) {
         goto END;
     }
 
@@ -281,7 +282,7 @@ Error_t UART_recvDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
     }
 
     pUarts[port].pUart->isRxBusy = true;
-    if (ERR_NONE != (status = DMA_transfer(pUarts[port].pDmaRx->channel, pData, dataLen))) {
+    if (ERR_NONE != (status = DMA_startTransfer(pUarts[port].pDmaRx->channel, pData, dataLen))) {
         goto END;
     }
 
@@ -292,10 +293,30 @@ END:                                     /* Tag to jump to in case of failure */
 /******************************************************************************/
 void UART_isr(Uart_t port)
 {
+    if (LL_USART_IsActiveFlag_ORE(pUarts[port].pUart->base)) {
+        /* Overrun error. This occurs when either we ran the DMA stream out of
+         * space to write data into when receiving or the stream was enabled,
+         * no receive was initiated but data came in anyway and there was no
+         * buffer to write into. */
+
+        if (pUarts[port].pDmaRx) {
+            DMA_abortTransfer(pUarts[port].pDmaRx->channel);
+        }
+
+        LL_USART_ClearFlag_ORE(pUarts[port].pUart->base);
+    }
+
+    if (LL_USART_IsEnabledIT_IDLE(pUarts[port].pUart->base) &&
+        LL_USART_IsActiveFlag_IDLE(pUarts[port].pUart->base)) {
+        /* IDLE interrupt was enabled and occurred */
+//        Buffer_t buffer
+    }
+
     /* Check for interrupt flags and errors */
     if (LL_USART_IsActiveFlag_ORE(USART3)) {                /* Overrun error? */
         LL_USART_ClearFlag_ORE(USART3);                 /* Clear Overrun flag */
         LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
+
     }
 
 
@@ -310,37 +331,41 @@ void UART_isr(Uart_t port)
 
 /* Private functions ---------------------------------------------------------*/
 
-///******************************************************************************/
-//static Uart_t UART_findDeviceByHandle(UART_HandleTypeDef* huart)
-//{
-//    for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
-//        if (huart->Instance == pUarts[port].pUart->handle.Instance) {
-//            return port;
-//        }
-//    }
-//    return UART_MAX;
-//}
-//
-///******************************************************************************/
-//static Uart_t UART_findDeviceByInstance(USART_TypeDef* instance)
-//{
-//    for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
-//        if (instance == pUarts[port].pUart->handle.Instance) {
-//            return port;
-//        }
-//    }
-//    return UART_MAX;
-//}
-//
-///******************************************************************************/
-//static DMA_HandleTypeDef* UART_getDmaHandleByInstance(DMA_Stream_TypeDef* instance)
-//{
-//    for (Uart_t port = UART_DBG; port < UART_MAX; port++) {
-//        if (instance == pUarts[port].pUart->handle.hdmarx->Instance) {
-//            return (pUarts[port].pUart->handle.hdmarx);
-//        } else if (instance == pUarts[port].pUart->handle.hdmatx->Instance) {
-//            return (pUarts[port].pUart->handle.hdmatx);
-//        }
-//    }
-//    return NULL;
-//}
+/******************************************************************************/
+static void UART_callbackDmaTxDone(Dma_t channel, const uint8_t* const pData, uint16_t bytes)
+{
+    Uart_t port = UART_getPortFromDmaChannel(channel);
+    if (UART_MAX == port) {
+        return;
+    }
+
+    if (pUarts[port].pUart->callbackDataSent) {
+        pUarts[port].pUart->callbackDataSent(port, pData, bytes);
+    }
+}
+
+/******************************************************************************/
+static void UART_callbackDmaRxDone(Dma_t channel, const uint8_t* const pData, uint16_t bytes)
+{
+    Uart_t port = UART_getPortFromDmaChannel(channel);
+    if (UART_MAX == port) {
+        return;
+    }
+
+    if (pUarts[port].pUart->callbackDataRcvd) {
+        pUarts[port].pUart->callbackDataRcvd(port, pData, bytes);
+    }
+}
+
+/******************************************************************************/
+static Uart_t UART_getPortFromDmaChannel(Dma_t channel)
+{
+    Uart_t port = UART_MAX;
+    for (port = UART_START; port < UART_MAX; port++) {
+        if (pUarts[port].pDmaRx->channel == channel ||
+            pUarts[port].pDmaTx->channel == channel) {
+            return port;
+        }
+    }
+    return UART_MAX;
+}

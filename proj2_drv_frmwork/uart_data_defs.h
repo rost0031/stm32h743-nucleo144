@@ -28,6 +28,37 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 
+
+/**
+ * @brief   UART interrupts
+ *
+ * This set of enums is a complete list of possible interrupts for this driver.
+ * Its primary purpose to allow user to control which interrupts should be
+ * listened and acted upon. They also allow for registration of callbacks which
+ * is how the driver will know which interrupts to enable
+ */
+typedef enum {
+    UartIntStart = 0,                               /**< For bounds checking */
+
+    UartIntParityError = UartIntStart,       /**< UART parity error interrupt */
+    UartIntFramingError,                    /**< UART framing error interrupt */
+    UartIntNoiseError,                        /**< UART noise error interrupt */
+    UartIntOverrunError,                    /**< UART overrun error interrupt */
+    UartIntIdle,                                     /**< UART IDLE interrupt */
+    UartIntRxneRxfne,/**< UART read data register or fifo not empty interrupt */
+    UartIntTransferComplete,            /**< UART Transfer Complete interrupt */
+    UartIntTxeTxfnf,     /**< UART TX reg empty or TX FIFO not full interrupt */
+    UartIntLineBreak,                          /**< UART Line Break interrupt */
+    UartIntNCTS,                                     /**< UART NCTS interrupt */
+    UartIntCTS,                                       /**< UART CTS interrupt */
+    UartIntReceiverTimeout,             /**< UART Receiver Time Out interrupt */
+    UartIntEndOfBlock,          /**< UART End Of Block interrupt (smart card) */
+    UartIntUnderrunError,                  /**< UART Underrun Error interrupt */
+
+    UartIntEnd                                       /**< For bounds checking */
+} UartInterrupt_t;
+
+
 /**
  * @brief   UART callback function pointer type
  */

@@ -15,87 +15,35 @@
 
 /* Compile-time called macros ------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
+
+
+/* Private defines -----------------------------------------------------------*/
+
+/** @defgroup DMA_flag_definitions DMA flag definitions
+ * @brief    DMA flag definitions
+ *
+ * This is a group of offsets into the various registers that group all the
+ * bits from multiple streams into the same register by splitting the streams
+ * into streams 0-3 into lower register and 4-7 into higher register. STM has
+ * these defines in their HAL driver but not in the LL driver.
+ *
+ * Since this driver calculates the stream offset into the register at compile
+ * time, we can just use this to shift into the different status bits that we
+ * care about instead of defining these for all streams.
+ *
+ * @{
+ */
+#define DMA_FLAG_FEIF0_4                    (DMA_HISR_FEIF4_Msk)
+#define DMA_FLAG_DMEIF0_4                   (DMA_HISR_DMEIF4_Msk)
+#define DMA_FLAG_TEIF0_4                    (DMA_HISR_TEIF4_Msk)
+#define DMA_FLAG_HTIF0_4                    (DMA_HISR_HTIF4_Msk)
+#define DMA_FLAG_TCIF0_4                    (DMA_HISR_TCIF4_Msk)
+/**
+ * @}
+ * DMA_flag_definitions
+ */
+
 /* Private macros ------------------------------------------------------------*/
-
-
-
-///**
-//  * @brief  Helper macro to calculate stream index from DMA base address
-//  * @note   This is used to get the stream index
-//  * @param  __DMA_INSTANCE__ DMAx
-//  * @return uint32_t stream number
-//  */
-//#define LL_DMA_CALC_STREAM_NUMBER(__DMA_INSTANCE__) \
-//        ((uint32_t)((((__DMA_INSTANCE__) & 0xFFU) - 16U) / 24U))
-//
-///**
-//  * @brief  Calculate stream index from DMA base address
-//  * @note   This is used to get the stream index
-//  * @param  DMAx
-//  * @return uint32_t stream number
-//  */
-//__STATIC_INLINE uint32_t LL_DMA_calcStreamNumber(DMA_TypeDef *DMAx)
-//{
-//    return (((uint32_t)(((DMAx) & 0xFFU) - 16U) / 24U));
-//}
-
-/**
-  * @brief  Helper macro to calculate stream index from DMA base address
-  * @note   This is used to get the stream index
-  * @param  __DMA_INSTANCE__ DMAx
-  * @return uint32_t stream number
-  */
-//#define LL_DMA_CALC_STREAM_NUMBER(_DMA_STRM_INST_) \
-//        ((uint32_t)(((((uint32_t *)(_DMA_STRM_INST_)) & 0xFFU) - 16U) / 24U))
-
-/**
-  * @brief  Helper macro to calculate stream index from DMA base address
-  * @param  __DMA_INSTANCE__ DMAx
-  * @return uint32_t stream index
-  */
-//#define LL_DMA_CALC_STREAM_INDEX(__DMA_INSTANCE__)                             \
-//        do {                                                                   \
-//            uint32_t streamNum = LL_DMA_CALC_STREAM_NUMBER(__DMA_INSTANCE__);  \
-//            static const bitShifts[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U}; \
-//            uint32_t streamIdx = bitShifts[streamNum & 0x7U];                  \
-//        } while(0);
-
-/**
-  * @brief  Helper macro to calculate stream index from DMA base address
-  * @param  __DMA_INSTANCE__ DMAx
-  * @return uint32_t stream index
-  */
-//#define LL_DMA_CALC_STREAM_INDEX(_DMA_STRM_INST_)                              \
-//        do {                                                                   \
-//            uint32_t streamNum = LL_DMA_CALC_STREAM_NUMBER(_DMA_STRM_INST_);   \
-//            static const bitShifts[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U}; \
-//            uint32_t streamIdx = bitShifts[streamNum & 0x7U];                  \
-//        } while(0);
-
-//static inline uint32_t LL_DMA_calcStreamIndex(DMA_Stream_TypeDef* const streamAddr)
-//{
-////    uint32_t streamNum = LL_DMA_CALC_STREAM_NUMBER(streamAddr);
-//    static const bitShifts[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-//    uint32_t streamIdx = bitShifts[streamNum & 0x7U];
-//    return streamIdx;
-//}
-
-static inline uint32_t LL_DMA_calcStreamBaseAddr(DMA_Stream_TypeDef *DMAx)
-{
-//    uint32_t streamNum = LL_DMA_CALC_STREAM_NUMBER(DMAx);
-    uint32_t streamNum = (((uint32_t)((uint32_t*)(DMAx)) & 0xFFU) - 16U) / 24U;
-//    uint32_t streamIdx = LL_DMA_calcStreamIndex(DMAx);
-    static const bitShifts[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-    uint32_t streamIdx = bitShifts[streamNum & 0x7U];
-    uint32_t streamBaseAddr = 0;
-    if (streamNum > 3) {
-        streamBaseAddr = (((uint32_t)((uint32_t*)DMAx) & (uint32_t)(~0x3FFU)) + 4U);
-    } else {
-        streamBaseAddr = (((uint32_t)((uint32_t*)DMAx) & (uint32_t)(~0x3FFU)));
-    }
-    return streamBaseAddr;
-}
 
 
 /* Private variables and Local objects ---------------------------------------*/
@@ -103,6 +51,24 @@ static inline uint32_t LL_DMA_calcStreamBaseAddr(DMA_Stream_TypeDef *DMAx)
 static DmaData_t *pDMAs = NULL;                      /**< pointer to DMA data */
 
 /* Private function prototypes -----------------------------------------------*/
+
+/**
+ * @brief   Calculate the ISR register address for a given DMA channel
+ *
+ * STM placed the ISR registers into 2 separate HISR and LISR registers for all
+ * the streams. This makes it difficult to figure out at compile (or even
+ * runtime) which register to check/clear. This function attempts to address
+ * this problem. It is unfortunately done at runtime. A better implementation
+ * would convert this to a macro that figures all this out at compile time. It
+ * SHOULD be possible.
+ *
+ * @return  uint32_t memory address of either HISR or LISR reg for DMAx
+ * @retval
+ *
+ */
+//static uint32_t LL_DMA_calcStreamIsrRegAddr(
+//        Dma_t channel                      /**< [in] which system DMA channel */
+//);
 /* Public and Exported functions ---------------------------------------------*/
 
 /******************************************************************************/
@@ -153,9 +119,8 @@ void DMA_init(Dma_t channel)
     /* Errata workaround for UART/DMA lockup */
     LL_DMA_EnableBufferableTransfer(pDMAs[channel].base, pDMAs[channel].stream);
 
-    /* Make sure to clear this internal state variable so the driver is
-     * available for work. */
-    pDMAs[channel].pDynData->isBusy = false;
+    /* Keep this flag set until DMA_start() is called */
+    pDMAs[channel].pDynData->isBusy = true;
 
 }
 
@@ -170,6 +135,12 @@ void DMA_deinit(Dma_t channel)
         DMA_getData(&pDMAs);
     }
 
+    /* Clear out all callbacks */
+    DMA_clearAllCallbacks(channel);
+
+    /* Stop the DMA in case the user hasn't */
+    DMA_stop(channel);
+
     /* Set the busy flag so that if someone tries to use this after it's been
      * deinitialized and happen to check for errors, at least we'll let them
      * know that a problem exists. */
@@ -179,8 +150,29 @@ void DMA_deinit(Dma_t channel)
 /******************************************************************************/
 void DMA_start(Dma_t channel)
 {
-    LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
-    LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
+
+//    if (pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt]) {
+        LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
+//    }
+
+//    if (pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt]) {
+        LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+//    }
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
+        LL_DMA_EnableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
+        LL_DMA_EnableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
+        LL_DMA_EnableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+
     NVIC_SetPriority(pDMAs[channel].irq, pDMAs[channel].prio);
     NVIC_EnableIRQ(pDMAs[channel].irq);
 
@@ -194,6 +186,10 @@ void DMA_stop(Dma_t channel)
 {
     LL_DMA_DisableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
     LL_DMA_DisableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
+    LL_DMA_DisableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
+
     NVIC_DisableIRQ(pDMAs[channel].irq);
 
     /* Set the busy flag so that if someone tries to use this after it's been
@@ -203,19 +199,27 @@ void DMA_stop(Dma_t channel)
 }
 
 /******************************************************************************/
-void DMA_regCallback(Dma_t channel, DmaCallback_t callback)
+void DMA_registerCallback(Dma_t channel, DmaInterrupt_t dmaInt, DmaCallback_t callback)
 {
-    pDMAs[channel].pDynData->callback = callback;
+    pDMAs[channel].pDynData->callbacks[dmaInt] = callback;
 }
 
 /******************************************************************************/
-void DMA_clrCallback(Dma_t channel)
+void DMA_unregisterCallback(Dma_t channel, DmaInterrupt_t dmaInt)
 {
-    pDMAs[channel].pDynData->callback = NULL;
+    pDMAs[channel].pDynData->callbacks[dmaInt] = NULL;
 }
 
 /******************************************************************************/
-Error_t DMA_transfer(Dma_t channel, const uint8_t* const pData, uint16_t len)
+void DMA_clearAllCallbacks(Dma_t channel)
+{
+    for (DmaInterrupt_t i = DmaTransferIntStart; i < DmaTransferIntEnd; i++) {
+        DMA_unregisterCallback(channel, i);
+    }
+}
+
+/******************************************************************************/
+Error_t DMA_startTransfer(Dma_t channel, uint8_t* const pData, uint16_t len)
 {
     Error_t status = ERR_NONE;
 
@@ -231,13 +235,20 @@ Error_t DMA_transfer(Dma_t channel, const uint8_t* const pData, uint16_t len)
         status = ERR_HW_BUSY; goto END;
     }
 
+    /* Save buffer information */
+    pDMAs[channel].pDynData->buffer.pData = pData;
+    pDMAs[channel].pDynData->buffer.maxLen = len;
+    pDMAs[channel].pDynData->buffer.len = 0;
+
     /* We don't want to start a new DMA transfer while this one is going */
     pDMAs[channel].pDynData->isBusy = true;
 
     /* The only configuration needed to start a transfer is to set number of
-     * bytes and the buffer location. Then we can enable the stream to go. */
+     * bytes and the buffer location. */
     LL_DMA_SetMemoryAddress(pDMAs[channel].base, pDMAs[channel].stream, (uint32_t)pData);
     LL_DMA_SetDataLength(pDMAs[channel].base, pDMAs[channel].stream, len);
+
+    /* Start the DMA transfer */
     LL_DMA_EnableStream(pDMAs[channel].base, pDMAs[channel].stream);
 
 END:                                       /* Tag to jump to in case of error */
@@ -245,85 +256,76 @@ END:                                       /* Tag to jump to in case of error */
 }
 
 /******************************************************************************/
+void DMA_abortTransfer(Dma_t channel)
+{
+    if (LL_DMA_IsEnabledStream(pDMAs[channel].base, pDMAs[channel].stream)) {
+        LL_DMA_DisableStream(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+
+    pDMAs[channel].pDynData->isBusy = false;          /* Set the flag on exit */
+}
+
+/******************************************************************************/
+void DMA_getCurrentState(Dma_t channel, Buffer_t* pBuffer)
+{
+    pDMAs[channel].pDynData->buffer.len = LL_DMA_GetDataLength(
+            pDMAs[channel].base, pDMAs[channel].stream);
+    *pBuffer = pDMAs[channel].pDynData->buffer;
+}
+
+/******************************************************************************/
 void DMA_isr(Dma_t channel)
 {
-//    uint32_t streamBaseAddr = LL_DMA_calcStreamBaseAddr(pDMAs[channel].streamBase);
-    /* TODO: Make this more general after getitng the basics working. */
+    /* Get number of bytes that haven't been transferred */
+    pDMAs[channel].pDynData->buffer.len = LL_DMA_GetDataLength(pDMAs[channel].base, pDMAs[channel].stream);
 
-    if (LL_DMA_IsActiveFlag_TC7(pDMAs[channel].base) == 1) {
-        if(NULL != pDMAs[channel].pDynData->callback) {
-            pDMAs[channel].pDynData->callback(channel);
+    /* Check all the possible interrupts. If set and callback exists, call it. Clear flags */
+    if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_TCIF0_4 << pDMAs[channel].streamRegBitShift)) {
+        if (pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt]) {
+            pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt](channel,
+                    pDMAs[channel].pDynData->buffer.pData,
+                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
         }
-        LL_DMA_ClearFlag_TC7(pDMAs[channel].base);
-        pDMAs[channel].pDynData->isBusy = false;
-    } else if(LL_DMA_IsActiveFlag_TE7(pDMAs[channel].base) == 1) {
-        if(NULL != pDMAs[channel].pDynData->callback) {
-            pDMAs[channel].pDynData->callback(channel);
-        }
-        pDMAs[channel].pDynData->isBusy = false;
-        LL_DMA_ClearFlag_TE7(pDMAs[channel].base);
+        WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TCIF0_4 << pDMAs[channel].streamRegBitShift));
     }
 
-    if (LL_DMA_IsActiveFlag_TC1(pDMAs[channel].base) == 1) {
-        if(NULL != pDMAs[channel].pDynData->callback) {
-            pDMAs[channel].pDynData->callback(channel);
+    if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+        if (pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt]) {
+            pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt](channel,
+                    pDMAs[channel].pDynData->buffer.pData,
+                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
         }
-        LL_DMA_ClearFlag_TC1(pDMAs[channel].base);
-        pDMAs[channel].pDynData->isBusy = false;
-    } else if(LL_DMA_IsActiveFlag_TE1(pDMAs[channel].base) == 1) {
-        if(NULL != pDMAs[channel].pDynData->callback) {
-            pDMAs[channel].pDynData->callback(channel);
-        }
-        pDMAs[channel].pDynData->isBusy = false;
-        LL_DMA_ClearFlag_TE1(pDMAs[channel].base);
+        WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift));
     }
+
+    if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift)) {
+        if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
+            pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt](channel,
+                    pDMAs[channel].pDynData->buffer.pData,
+                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+        }
+        WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift));
+    }
+
+    if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+        if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
+            pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt](channel,
+                    pDMAs[channel].pDynData->buffer.pData,
+                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+        }
+        WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift));
+    }
+    if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+        if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
+            pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt](channel,
+                    pDMAs[channel].pDynData->buffer.pData,
+                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+        }
+        WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift));
+    }
+
+    pDMAs[channel].pDynData->isBusy = false; /* Clear busy flag after we are all finished */
 }
 
 /* Private functions ---------------------------------------------------------*/
-/******************************************************************************/
-//static uint32_t DMA_calcStreamNumber(Dma_t channel)
-//{
-//    uint32_t streamNum = (((uint32_t)((uint32_t*)pDMAs[channel].base) & 0xFFU) - 16U) / 24U;
-//    return streamNum;
-//}
-//
-///******************************************************************************/
-//static uint32_t DMA_calcStreamIndex(Dma_t channel)
-//{
-//    uint32_t streamNum = DMA_calcStreamNumber(channel);
-//
-//    /* lookup table for necessary bitshift of flags within status registers */
-//    static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-//    uint32_t streamIndex = flagBitshiftOffset[streamNum & 0x7U];
-//    return streamIndex;
-//}
-//
-///******************************************************************************/
-//static uint32_t DMA_calcStreamBaseAddr(Dma_t channel)
-//{
-//    uint32_t streamNumber = DMA_calcStreamNumber(channel);
-//    uint32_t streamIndex = DMA_calcStreamIndex(channel);
-//
-//
-//    if(IS_DMA_STREAM_INSTANCE(hdma->Instance) != 0U) /* DMA1 or DMA2 instance */
-//    {
-//        uint32_t stream_number = (((uint32_t)((uint32_t*)hdma->Instance) & 0xFFU) - 16U) / 24U;
-//
-//        /* lookup table for necessary bitshift of flags within status registers */
-//        static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-//        hdma->StreamIndex = flagBitshiftOffset[stream_number & 0x7U];
-//
-//        if (stream_number > 3U)
-//        {
-//            /* return pointer to HISR and HIFCR */
-//            hdma->StreamBaseAddress = (((uint32_t)((uint32_t*)hdma->Instance) & (uint32_t)(~0x3FFU)) + 4U);
-//        }
-//        else
-//        {
-//            /* return pointer to LISR and LIFCR */
-//            hdma->StreamBaseAddress = ((uint32_t)((uint32_t*)hdma->Instance) & (uint32_t)(~0x3FFU));
-//        }
-//    }
-//
-//    return hdma->StreamBaseAddress;
-//}
+

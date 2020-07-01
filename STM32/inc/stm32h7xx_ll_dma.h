@@ -1591,8 +1591,9 @@ __STATIC_INLINE uint32_t LL_DMA_GetFIFOStatus(DMA_TypeDef *DMAx, uint32_t Stream
 __STATIC_INLINE void LL_DMA_DisableFifoMode(DMA_TypeDef *DMAx, uint32_t Stream)
 {
   register uint32_t dma_base_addr = (uint32_t)DMAx;
-
-  CLEAR_BIT(((DMA_Stream_TypeDef *)(dma_base_addr + LL_DMA_STR_OFFSET_TAB[Stream]))->FCR, DMA_SxFCR_DMDIS);
+  /* Fixed STM bug in this code. They were setting this register mask to DMA_SxFCR_DMDIS. Looks like a
+   * copy/paste error. */
+  CLEAR_BIT(((DMA_Stream_TypeDef *)(dma_base_addr + LL_DMA_STR_OFFSET_TAB[Stream]))->FCR, DMA_SxFCR_FEIE);
 }
 
 /**
@@ -1614,7 +1615,9 @@ __STATIC_INLINE void LL_DMA_EnableFifoMode(DMA_TypeDef *DMAx, uint32_t Stream)
 {
   register uint32_t dma_base_addr = (uint32_t)DMAx;
 
-  SET_BIT(((DMA_Stream_TypeDef *)(dma_base_addr + LL_DMA_STR_OFFSET_TAB[Stream]))->FCR, DMA_SxFCR_DMDIS);
+  /* Fixed STM bug in this code. They were setting this register mask to DMA_SxFCR_DMDIS. Looks like a
+     * copy/paste error. */
+  SET_BIT(((DMA_Stream_TypeDef *)(dma_base_addr + LL_DMA_STR_OFFSET_TAB[Stream]))->FCR, DMA_SxFCR_FEIE);
 }
 
 /**

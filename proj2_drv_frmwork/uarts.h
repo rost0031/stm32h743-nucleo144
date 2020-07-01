@@ -32,10 +32,11 @@ extern "C" {
  * time instead of having to check at runtime
  */
 typedef enum {
-   UART_DBG = 0,   /**< UART port for debug output/input */
+    UART_START = 0,
+    UART_DBG = UART_START,   /**< UART port for debug output/input */
 
-   /* Insert more serial port enumerations here... */
-   UART_MAX         /**< Maximum number of available UART ports on the system */
+    /* Insert more serial port enumerations here... */
+    UART_MAX         /**< Maximum number of available UART ports on the system */
 } Uart_t;
 
 /* Exported constants --------------------------------------------------------*/

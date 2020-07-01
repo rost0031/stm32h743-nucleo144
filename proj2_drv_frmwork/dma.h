@@ -31,6 +31,27 @@ extern "C" {
  *
  * This function initializes all hardware needed to operate a DMA channel
  *
+ * After initialization the driver is not quite ready to go. This function only
+ * configures the hardware. After this function completes, the caller of the
+ * driver should register any callbacks for interrupts that user might be
+ * interested in, then call the DMA_start() function. Transfers can now be
+ * started and stopped as needed and when interrupts occur, the driver will call
+ * the callback that the user registered for a given interrupt. The basic flow
+ * looks as follows:
+ *
+ * DMA_init(channel);
+ * DMA_registerCallback(channel, DmaTransferCompleteInt, transferCompleteFunc);
+ * DMA_registerCallback(channel, DmaTransferErrorInt, transferErrorFunc);
+ * DMA_start(channel);
+ * DMA_transfer(channel, dataBuffer, bufferLength);
+ *
+ * -> interrupt for transfer complete occurs
+ * -> DMA_isr() gets called
+ * -> DMA_isr() checks interrupts and calls associated user callback function
+ * -> DMA_isr() clears busy state and exits
+ *
+ * Repeat as needed
+ *
  * @return  None
  */
 void DMA_init(
@@ -38,9 +59,9 @@ void DMA_init(
 );
 
 /**
- * @brief   DeInitialize given Button
+ * @brief   DeInitialize given DMA channel
  *
- * This function de-initializes all hardware needed to operate an Button
+ * This function de-initializes all hardware needed to operate a DMA channel
  *
  * @return  None
  */
@@ -49,7 +70,15 @@ void DMA_deinit(
 );
 
 /**
- * @brief   Start given Button driver
+ * @brief   Start driver for a given DMA channel
+ *
+ * This function enables interrupts and starts the operation of the driver.
+ *
+ * @note:   Only activates interrupts that have registered callbacks along with
+ *          the NVIC DMA stream interrupt.
+ *
+ * @note:   Must be called after initialization but before any transfer take
+ *          place
  *
  * @return  None
  */
@@ -58,7 +87,9 @@ void DMA_start(
 );
 
 /**
- * @brief   Stop a given Button driver
+ * @brief   Stop driver for a given DMA channel
+ *
+ * This function disables interrupts for a given DMA channel
  *
  * @return  None
  */
@@ -67,22 +98,32 @@ void DMA_stop(
 );
 
 /**
- * @brief   Register a new callback
+ * @brief   Register a new callback for given DMA channel
  *
  * Allows user to add a callback to call when a given DMA channel finishes
  *
  * @return  None
  */
-void DMA_regCallback(
+void DMA_registerCallback(
         Dma_t channel,                     /**< [in] which system DMA channel */
-        DmaCallback_t callback
+        DmaInterrupt_t dmaInt,             /**< [in] DMA interrupt identifier */
+        DmaCallback_t callback             /**< [in] DMA callback to register */
 );
 
 /**
- * @brief   Clear a set callback
+ * @brief   Clear a registered callback for given DMA channel
  * @return  None
  */
-void DMA_clrCallback(
+void DMA_unregisterCallback(
+        Dma_t channel,                     /**< [in] which system DMA channel */
+        DmaInterrupt_t dmaInt              /**< [in] DMA interrupt identifier */
+);
+
+/**
+ * @brief   Clear all registered callbacks for given DMA channel
+ * @return  None
+ */
+void DMA_clearAllCallbacks(
         Dma_t channel                      /**< [in] which system DMA channel */
 );
 
@@ -100,10 +141,18 @@ void DMA_clrCallback(
  * @retval  ERR_LEN_INVALID: invalid length passed in
  * @retval  ERR_HW_BUSY: stream is currently busy doing a transfer
  */
-Error_t DMA_transfer(
+Error_t DMA_startTransfer(
         Dma_t channel,                     /**< [in] which system DMA channel */
-        const uint8_t* const pData,      /**< [in] address to trasfer to/from */
+        uint8_t* const pData,            /**< [in] address to trasfer to/from */
         uint16_t len                    /**< [in] number of bytes to transfer */
+);
+
+/**
+ * @brief   Abort current DMA transfer if active
+ * @return  None
+ */
+void DMA_abortTransfer(
+        Dma_t channel                      /**< [in] which system DMA channel */
 );
 
 /**
