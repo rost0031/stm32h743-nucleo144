@@ -51,6 +51,9 @@ static UartDevData_t uartData[UART_MAX] = {
                 .isRxBusy           = true,
                 .callbackDataSent   = NULL,
                 .callbackDataRcvd   = NULL,
+                .callbacks          = {NULL},
+                .bufferTx           = {0},
+                .bufferRx           = {0},
         },
 };
 

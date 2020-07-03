@@ -276,53 +276,60 @@ void DMA_getCurrentState(Dma_t channel, Buffer_t* pBuffer)
 /******************************************************************************/
 void DMA_isr(Dma_t channel)
 {
-    /* Get number of bytes that haven't been transferred */
+    /* Get number of bytes that haven't been transferred. The rest of the data
+     * about the transfer is already in the structure */
     pDMAs[channel].pDynData->buffer.len = LL_DMA_GetDataLength(pDMAs[channel].base, pDMAs[channel].stream);
 
-    /* Check all the possible interrupts. If set and callback exists, call it. Clear flags */
+    /* Check all the possible interrupts.
+     * If set and callback exists, call it.
+     * Clear flags */
+
+    /* Transfer Complete? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_TCIF0_4 << pDMAs[channel].streamRegBitShift)) {
         if (pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt](channel,
-                    pDMAs[channel].pDynData->buffer.pData,
-                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+                    ERR_NONE, &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TCIF0_4 << pDMAs[channel].streamRegBitShift));
     }
 
+    /* Transfer Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift)) {
         if (pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt](channel,
-                    pDMAs[channel].pDynData->buffer.pData,
-                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+                    ERR_HW_DMA_TRANSFER, &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift));
     }
 
+#if 0
+    /* Transfer Half Complete? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift)) {
         if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt](channel,
-                    pDMAs[channel].pDynData->buffer.pData,
-                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+                    ERR_NONE,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift));
     }
 
+    /* Transfer Direct Mode Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift)) {
         if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt](channel,
-                    pDMAs[channel].pDynData->buffer.pData,
-                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+                    ERR_HW_DMA_TRANSFER,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift));
     }
+
+    /* Transfer FIFO Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift)) {
         if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt](channel,
-                    pDMAs[channel].pDynData->buffer.pData,
-                    (pDMAs[channel].pDynData->buffer.maxLen - pDMAs[channel].pDynData->buffer.len));
+                    ERR_HW_DMA_TRANSFER,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift));
     }
+#endif
 
     pDMAs[channel].pDynData->isBusy = false; /* Clear busy flag after we are all finished */
 }

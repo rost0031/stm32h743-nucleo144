@@ -30,8 +30,8 @@ static UartData_t *pUarts = NULL;                   /**< pointer to UART data */
  */
 static void UART_callbackDmaTxDone(
         Dma_t channel,
-        const uint8_t* const pData,
-        uint16_t bytes
+        Error_t status,
+        Buffer_t *pBuffer
 );
 
 /**
@@ -39,8 +39,8 @@ static void UART_callbackDmaTxDone(
  */
 static void UART_callbackDmaRxDone(
         Dma_t channel,
-        const uint8_t* const pData,
-        uint16_t bytes
+        Error_t status,
+        Buffer_t *pBuffer
 );
 
 /**
@@ -253,6 +253,18 @@ Error_t UART_sendDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
         status = ERR_HW_CONFIG; goto END;
     }
 
+    /* Save buffer information */
+    pUarts[port].pUart->bufferTx.pData  = pData;
+    pUarts[port].pUart->bufferTx.maxLen = dataLen;
+    pUarts[port].pUart->bufferTx.len    = 0;
+
+    pUarts[port].pUart->isTxBusy = true;
+
+    /* Register a private UART callback with DMA channel to notify UART driver
+     * when DMA completes the transfer */
+    DMA_registerCallback(pUarts[port].pDmaTx->channel,
+            DmaTransferCompleteInt, UART_callbackDmaTxDone);
+
     if (ERR_NONE != (status = DMA_startTransfer(pUarts[port].pDmaTx->channel, pData, dataLen))) {
         goto END;
     }
@@ -281,7 +293,18 @@ Error_t UART_recvDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
         status = ERR_HW_CONFIG; goto END;
     }
 
+    /* Save buffer information */
+    pUarts[port].pUart->bufferTx.pData  = pData;
+    pUarts[port].pUart->bufferTx.maxLen = dataLen;
+    pUarts[port].pUart->bufferTx.len    = 0;
+
     pUarts[port].pUart->isRxBusy = true;
+
+    /* Register a private UART callback with DMA channel to notify UART driver
+     * when DMA completes the transfer */
+    DMA_registerCallback(pUarts[port].pDmaTx->channel,
+            DmaTransferCompleteInt, UART_callbackDmaRxDone);
+
     if (ERR_NONE != (status = DMA_startTransfer(pUarts[port].pDmaRx->channel, pData, dataLen))) {
         goto END;
     }
@@ -332,29 +355,41 @@ void UART_isr(Uart_t port)
 /* Private functions ---------------------------------------------------------*/
 
 /******************************************************************************/
-static void UART_callbackDmaTxDone(Dma_t channel, const uint8_t* const pData, uint16_t bytes)
+static void UART_callbackDmaTxDone(Dma_t channel, Error_t status, Buffer_t *pBuffer)
 {
     Uart_t port = UART_getPortFromDmaChannel(channel);
     if (UART_MAX == port) {
-        return;
+        goto END;
     }
 
     if (pUarts[port].pUart->callbackDataSent) {
-        pUarts[port].pUart->callbackDataSent(port, pData, bytes);
+        pUarts[port].pUart->callbackDataSent(port, status, pBuffer);
     }
+
+END:                                     /* Tag to jump to in case of failure */
+
+    /* We always want to clear this flag since whether we had an error or not,
+     * we want to free up the driver to try again */
+    pUarts[port].pUart->isTxBusy = false;
 }
 
 /******************************************************************************/
-static void UART_callbackDmaRxDone(Dma_t channel, const uint8_t* const pData, uint16_t bytes)
+static void UART_callbackDmaRxDone(Dma_t channel, Error_t status, Buffer_t *pBuffer)
 {
     Uart_t port = UART_getPortFromDmaChannel(channel);
     if (UART_MAX == port) {
-        return;
+        goto END;
     }
 
     if (pUarts[port].pUart->callbackDataRcvd) {
-        pUarts[port].pUart->callbackDataRcvd(port, pData, bytes);
+        pUarts[port].pUart->callbackDataRcvd(port, status, pBuffer);
     }
+
+END:                                     /* Tag to jump to in case of failure */
+
+    /* We always want to clear this flag since whether we had an error or not,
+     * we want to free up the driver to try again */
+    pUarts[port].pUart->isRxBusy = false;
 }
 
 /******************************************************************************/

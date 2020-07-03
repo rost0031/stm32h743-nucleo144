@@ -30,32 +30,65 @@ extern "C" {
 
 
 /**
- * @brief   UART interrupts
+ * @brief   UART events
  *
- * This set of enums is a complete list of possible interrupts for this driver.
- * Its primary purpose to allow user to control which interrupts should be
- * listened and acted upon. They also allow for registration of callbacks which
- * is how the driver will know which interrupts to enable
+ * This set of enums is a list of possible events for this driver.
+ * Its primary purpose to allow user to assign callbacks for these events
+ *
+ * This list started by listing all interrupts on UART which is a long list.
+ * Really, the user doesn't need to be aware of all of these error and action
+ * interrupts. Instead, the user only cares if:
+ *
+ * 1. Data sent successfully:
+ * tells caller driver is available to send more data
+ *
+ * 2. Data received successfully:
+ * tells caller driver has data available and that the caller needs to
+ * handle it and initiate a new receive with a new buffer for storage.
+ *
+ * 3. Error during receive:
+ * tells caller to retry or somehow handle this information
+ *
+ * 4. Error during send:
+ * tells caller to resend or somehow handle this information.
  */
 typedef enum {
-    UartIntStart = 0,                               /**< For bounds checking */
+    UartEvtStart = 0,                                /**< For bounds checking */
 
-    UartIntParityError = UartIntStart,       /**< UART parity error interrupt */
-    UartIntFramingError,                    /**< UART framing error interrupt */
-    UartIntNoiseError,                        /**< UART noise error interrupt */
-    UartIntOverrunError,                    /**< UART overrun error interrupt */
-    UartIntIdle,                                     /**< UART IDLE interrupt */
-    UartIntRxneRxfne,/**< UART read data register or fifo not empty interrupt */
-    UartIntTransferComplete,            /**< UART Transfer Complete interrupt */
-    UartIntTxeTxfnf,     /**< UART TX reg empty or TX FIFO not full interrupt */
-    UartIntLineBreak,                          /**< UART Line Break interrupt */
-    UartIntNCTS,                                     /**< UART NCTS interrupt */
-    UartIntCTS,                                       /**< UART CTS interrupt */
-    UartIntReceiverTimeout,             /**< UART Receiver Time Out interrupt */
-    UartIntEndOfBlock,          /**< UART End Of Block interrupt (smart card) */
-    UartIntUnderrunError,                  /**< UART Underrun Error interrupt */
+    UartEvtDataRcvd = UartEvtStart,                       /**< Data received */
+    UartEvtDataSent,                             /**< Data finished sending  */
+    UartEvtDataRecvErr,                     /**< Error during receiving data */
+    UartEvtDataSendErr,                       /**< Error during sending data */
 
-    UartIntEnd                                       /**< For bounds checking */
+#if 0
+
+    UartIntErrParity,                                       /**< parity error */
+    UartIntIDLE,                                   /**< RX line idle detected */
+    UartIntErrFraming,                                     /**< framing error */
+    UartIntErrNoise,                                         /**< noise error */
+    UartIntErrOverrun,                                     /**< overrun error */
+    UartIntTXE,                                   /**< TX data register empty */
+    UartIntTXFNF,                                       /**< TX FIFO not full */
+    UartIntTXTF,                               /**< TX FIFO threshold reached */
+    UartIntTC,                                         /**< Transfer Complete */
+    UartIntRXNE,                              /**< RX data register not empty */
+    UartIntRXFNE,                                      /**< RX FIFO not empty */
+    UartIntRXFF,                                            /**< RX FIFO full */
+    UartIntRXTF,                               /**< RX FIFO threshold reached */
+    UartIntCMF,                                 /**< Character match detected */
+    UartIntRTOF,                                              /**< RX timeout */
+
+    /* Not commonly used - START */
+    UartIntErrLBDF,                            /**< Line Break detected error */
+    UartIntCTS,                                            /**< CTS interrupt */
+    UartIntEOB,                                /**< End Of Block (smart card) */
+    UartIntWUF,                               /**< Wakeup from low-power mode */
+    UartIntUDR,                                 /**< SPI slave underrun error */
+    UartIntTCBGT,                    /**< Transfer Complete before guard time */
+    /* Not commonly used - END */
+#endif
+
+    UartEvtEnd                                       /**< For bounds checking */
 } UartInterrupt_t;
 
 
@@ -64,8 +97,8 @@ typedef enum {
  */
 typedef void (*UartCallback_t)(
         Uart_t,                                   /**< [in] Which system UART */
-        const uint8_t* const,                       /**< [in] pointer to data */
-        uint16_t                           /**< [in] length of data in buffer */
+        Error_t,                                /**< [in] status of operation */
+        Buffer_t*                     /**< [in] pointer to buffer information */
 );
 
 /**
@@ -91,6 +124,9 @@ typedef struct {
     bool                   isRxBusy;       /**< Is the UART RX currently busy */
     UartCallback_t callbackDataSent;       /**< Callback to call on data sent */
     UartCallback_t callbackDataRcvd;       /**< Callback to call on data rcvd */
+    UartCallback_t callbacks[UartEvtEnd];             /**< Array of callbacks */
+    Buffer_t    bufferTx;                          /**< TX Buffer information */
+    Buffer_t    bufferRx;                          /**< RX Buffer information */
 } UartDevData_t;
 
 /**

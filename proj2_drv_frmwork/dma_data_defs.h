@@ -19,6 +19,7 @@ extern "C" {
 #include <stdbool.h>
 #include "board_defs.h"
 #include "buffers.h"
+#include "errors.h"
 #include "dmas.h"
 #include "stm32h743xx.h"
 #include "stm32h7xx_ll_dma.h"
@@ -68,8 +69,8 @@ typedef struct
  */
 typedef void (*DmaCallback_t)(
         Dma_t,                                    /**< [in] which DMA channel */
-        const uint8_t* const,                       /**< [in] pointer to data */
-        uint16_t                        /**< [in] number of bytes transmitted */
+        Error_t,                                /**< [in] status of operation */
+        Buffer_t*                     /**< [in] pointer to buffer information */
 );
 
 /**

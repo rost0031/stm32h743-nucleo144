@@ -31,6 +31,7 @@ typedef enum {
     ERR_HW_BUSY             = 0x05, /**< HW busy */
     ERR_HW_TIMEOUT          = 0x06, /**< HW timeout */
     ERR_HW_CONFIG           = 0x07, /**< HW not or misconfigured */
+    ERR_HW_DMA_TRANSFER     = 0x08, /**< HW DMA transfer error occurred */
 
     ERR_UNIMPLEMENTED       = 0xFE, /**< Unimplemented feature */
     ERR_UNKNOWN             = 0xFF  /**< Max Error code*/
