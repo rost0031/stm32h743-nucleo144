@@ -96,9 +96,9 @@ Error_t BSP_init(void)
         goto END;
     }
 
-    if (ERR_NONE != (status = UART_start(UART_DBG))) {
-        goto END;
-    }
+//    if (ERR_NONE != (status = UART_start(UART_DBG))) {
+//        goto END;
+//    }
 
 
 END:                                     /* Tag to jump to in case of failure */
@@ -113,7 +113,7 @@ Error_t BSP_start(void)
     /* If we were using an RTOS, we'd want to finish up our RTOS init before
      * starting drivers but since we are bare-metal, we can go ahead and start
      * them now. */
-    BTN_start(BTN_USER1);
+//    BTN_start(BTN_USER1);
 
     if (ERR_NONE != (status = UART_start(UART_DBG))) {
         goto END;

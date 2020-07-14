@@ -28,7 +28,6 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 
-
 /**
  * @brief   UART events
  *
@@ -122,8 +121,6 @@ typedef struct {
     LL_USART_InitTypeDef       init;            /**< UART initialization data */
     bool                   isTxBusy;       /**< Is the UART TX currently busy */
     bool                   isRxBusy;       /**< Is the UART RX currently busy */
-    UartCallback_t callbackDataSent;       /**< Callback to call on data sent */
-    UartCallback_t callbackDataRcvd;       /**< Callback to call on data rcvd */
     UartCallback_t callbacks[UartEvtEnd];             /**< Array of callbacks */
     Buffer_t    bufferTx;                          /**< TX Buffer information */
     Buffer_t    bufferRx;                          /**< RX Buffer information */

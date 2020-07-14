@@ -63,45 +63,25 @@ Error_t UART_start(
 );
 
 /**
- * @brief   Set a Data Sent callback
+ * @brief   Set a callback for a specified interrupt event
  *
- * Set a function to call upon UART completing a data send
+ * Set a function to call upon UART getting the specified interrupt event.
  *
  * @return  None
  */
-void UART_regCallbackDataSent(
+void UART_regCallback(
         Uart_t port,                              /**< [in] which system UART */
-        UartCallback_t callback
+        UartInterrupt_t uartInt,              /**< [in] which interrupt event */
+        UartCallback_t callback                     /**[in] callback function */
 );
 
 /**
- * @brief   Set a Data Received callback
- *
- * Set a function to call upon UART completing a data receive. This will be
- * called either when there is an IDLE detected or when the receive buffer
- * is full.
- *
+ * @brief   Clear a callback for a specified interrupt event
  * @return  None
  */
-void UART_regCallbackDataRcvd(
+void UART_clrCallback(
         Uart_t port,                              /**< [in] which system UART */
-        UartCallback_t callback
-);
-
-/**
- * @brief   Clear a Data Sent callback
- * @return  None
- */
-void UART_clrCallbackDataSent(
-        Uart_t port                               /**< [in] which system UART */
-);
-
-/**
- * @brief   Clear a Data Received callback
- * @return  None
- */
-void UART_clrCallbackDataRcvd(
-        Uart_t port                               /**< [in] which system UART */
+        UartInterrupt_t uartInt               /**< [in] which interrupt event */
 );
 
 /**
@@ -116,13 +96,6 @@ void UART_clrCallbackDataRcvd(
  * buffer that was passed in until DMA transfer is complete. No data is
  * copied to any local buffers and the DMA transfer is done directly out of
  * the passed in buffer.
- *
- * @note:   STM HAL drivers have some strange behavior if trying to send
- * immediately after a send was just finished and the next call to their driver
- * returns a BUSY error. This error clears quickly but you need to attempt a
- * transfer again before it clears. The user is spared this by this driver by
- * looping until the BUSY error is cleared. All other HAL errors will result in
- * return of an error.
  *
  * @return  Error_t code that specifies success or failure
  * @retval  ERR_NONE: success
@@ -142,7 +115,7 @@ Error_t UART_sendDma(
  *
  * 1. DMA/UART error is detected.
  * 2. Passed in buffer becomes full.
- * 3. An IDLE is detected on the UART at the configured baud rate.
+ * 3. An interrupt is detected.
  *
  * If the caller registered a callback for receive complete, this driver will
  * call the user callback when any of the conditions above occur.
@@ -151,13 +124,6 @@ Error_t UART_sendDma(
  * buffer that was passed in until DMA transfer is complete. No data is
  * copied to any local buffers and the DMA transfer is done directly into the
  * passed in buffer.
- *
- * @note:   STM HAL drivers have some strange behavior if trying to send
- * immediately after a send was just finished and the next call to their driver
- * returns a BUSY error. This error clears quickly but you need to attempt a
- * transfer again before it clears. The user is spared this by this driver by
- * looping until the BUSY error is cleared. All other HAL errors will result in
- * return of an error.
  *
  * @return  Error_t code that specifies success or failure
  * @retval  ERR_NONE: success

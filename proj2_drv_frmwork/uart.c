@@ -25,8 +25,21 @@
 static UartData_t *pUarts = NULL;                   /**< pointer to UART data */
 
 /* Private function prototypes -----------------------------------------------*/
+
+/**
+ * @brief   Get UART port from DMA channel.
+ * @return  Uart_t port which has the passed in channel
+ */
+static Uart_t UART_getPortFromDmaChannel(
+        Dma_t channel
+);
+
 /**
  * @brief   Callback for DMA to call when finished.
+ *
+ * @warning: This function runs in the ISR context so be concise and speedy
+ *
+ * @return  None
  */
 static void UART_callbackDmaTxDone(
         Dma_t channel,
@@ -36,19 +49,15 @@ static void UART_callbackDmaTxDone(
 
 /**
  * @brief   Callback for DMA to call when finished.
+ *
+ * @warning: This function runs in the ISR context so be concise and speedy
+ *
+ * @return  None
  */
 static void UART_callbackDmaRxDone(
         Dma_t channel,
         Error_t status,
         Buffer_t *pBuffer
-);
-
-/**
- * @brief   Get UART port from DMA channel.
- * @return  Uart_t port which has the passed in channel
- */
-static Uart_t UART_getPortFromDmaChannel(
-        Dma_t channel
 );
 
 /* Public and Exported functions ---------------------------------------------*/
@@ -111,7 +120,6 @@ Error_t UART_init(Uart_t port)
 
     LL_USART_Enable( pUarts[port].pUart->base );               /* Enable UART */
 
-END:                                     /* Tag to jump to in case of failure */
     return status;
 }
 
@@ -132,13 +140,6 @@ Error_t UART_deInit(Uart_t port)
 
     LL_USART_DeInit(pUarts[port].pUart->base);
 
-    /* The cast is just for STM HAL driver call since it expects a non-const
-     * despite the fact it makes no changes */
-//    if (HAL_OK != HAL_UART_DeInit((UART_HandleTypeDef *)&(pUarts[port].pUart->handle))) {
-//        status = ERR_HW_INIT_FAILURE; goto END;
-//    }
-
-END:                                     /* Tag to jump to in case of failure */
     return status;
 }
 
@@ -210,27 +211,15 @@ Error_t UART_stop(Uart_t port)
 }
 
 /******************************************************************************/
-void UART_regCallbackDataSent(Uart_t port, UartCallback_t callback)
+void UART_regCallback(Uart_t port, UartInterrupt_t uartInt, UartCallback_t callback)
 {
-    pUarts[port].pUart->callbackDataSent = callback;
+    pUarts[port].pUart->callbacks[uartInt] = callback;
 }
 
 /******************************************************************************/
-void UART_regCallbackDataRcvd(Uart_t port, UartCallback_t callback)
+void UART_clrCallback(Uart_t port, UartInterrupt_t uartInt)
 {
-    pUarts[port].pUart->callbackDataRcvd = callback;
-}
-
-/******************************************************************************/
-void UART_clrCallbackDataSent(Uart_t port)
-{
-    pUarts[port].pUart->callbackDataSent = NULL;
-}
-
-/******************************************************************************/
-void UART_clrCallbackDataRcvd(Uart_t port)
-{
-    pUarts[port].pUart->callbackDataRcvd = NULL;
+    pUarts[port].pUart->callbacks[uartInt] = NULL;
 }
 
 /******************************************************************************/
@@ -294,9 +283,9 @@ Error_t UART_recvDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
     }
 
     /* Save buffer information */
-    pUarts[port].pUart->bufferTx.pData  = pData;
-    pUarts[port].pUart->bufferTx.maxLen = dataLen;
-    pUarts[port].pUart->bufferTx.len    = 0;
+    pUarts[port].pUart->bufferRx.pData  = pData;
+    pUarts[port].pUart->bufferRx.maxLen = dataLen;
+    pUarts[port].pUart->bufferRx.len    = 0;
 
     pUarts[port].pUart->isRxBusy = true;
 
@@ -332,38 +321,55 @@ void UART_isr(Uart_t port)
     if (LL_USART_IsEnabledIT_IDLE(pUarts[port].pUart->base) &&
         LL_USART_IsActiveFlag_IDLE(pUarts[port].pUart->base)) {
         /* IDLE interrupt was enabled and occurred */
-//        Buffer_t buffer
+
+        /* Get how many bytes DMA has done so far and subtract from total
+         * buffer size to get how many bytes are in the buffer currently */
+        pUarts[port].pUart->bufferRx.len = pUarts[port].pUart->bufferRx.maxLen
+                - DMA_getCurrentLength(pUarts[port].pDmaRx->channel);
+
+        DMA_abortTransfer(pUarts[port].pDmaRx->channel);
+
+        if (pUarts[port].pUart->callbacks[UartEvtDataRcvd]) {
+            pUarts[port].pUart->callbacks[UartEvtDataRcvd](port, ERR_NONE,
+                    &(pUarts[port].pUart->bufferRx));
+        }
     }
 
-    /* Check for interrupt flags and errors */
-    if (LL_USART_IsActiveFlag_ORE(USART3)) {                /* Overrun error? */
-        LL_USART_ClearFlag_ORE(USART3);                 /* Clear Overrun flag */
-        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
-
-    }
-
-
-    if (LL_USART_IsEnabledIT_IDLE(USART3) && LL_USART_IsActiveFlag_IDLE(USART3)) {
-        LL_USART_ClearFlag_IDLE(USART3);        /* Clear IDLE line flag */
-        /* Calculate current position in buffer */
-//        uint16_t rxBytes = sizeof(rxBuffer) - LL_DMA_GetDataLength(DMA2, LL_DMA_STREAM_1);
-        LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_1);
-    }
     pUarts[port].pUart->isRxBusy = false;
 }
 
 /* Private functions ---------------------------------------------------------*/
 
 /******************************************************************************/
-static void UART_callbackDmaTxDone(Dma_t channel, Error_t status, Buffer_t *pBuffer)
+static Uart_t UART_getPortFromDmaChannel(Dma_t channel)
+{
+    Uart_t port = UART_MAX;
+    for (port = UART_START; port < UART_MAX; port++) {
+        if (pUarts[port].pDmaRx->channel == channel ||
+            pUarts[port].pDmaTx->channel == channel) {
+            return port;
+        }
+    }
+    return UART_MAX;
+}
+
+/* Interrupt callback functions ----------------------------------------------*/
+/* Functions below are handled in the ISR context including anything they call
+ * so be concise and speedy */
+/******************************************************************************/
+static void UART_callbackDmaTxDone(
+        Dma_t channel,
+        Error_t status,
+        Buffer_t *pBuffer
+)
 {
     Uart_t port = UART_getPortFromDmaChannel(channel);
     if (UART_MAX == port) {
         goto END;
     }
 
-    if (pUarts[port].pUart->callbackDataSent) {
-        pUarts[port].pUart->callbackDataSent(port, status, pBuffer);
+    if (pUarts[port].pUart->callbacks[UartEvtDataSent]) {
+        pUarts[port].pUart->callbacks[UartEvtDataSent](port, status, pBuffer);
     }
 
 END:                                     /* Tag to jump to in case of failure */
@@ -381,8 +387,8 @@ static void UART_callbackDmaRxDone(Dma_t channel, Error_t status, Buffer_t *pBuf
         goto END;
     }
 
-    if (pUarts[port].pUart->callbackDataRcvd) {
-        pUarts[port].pUart->callbackDataRcvd(port, status, pBuffer);
+    if (pUarts[port].pUart->callbacks[UartEvtDataRcvd]) {
+        pUarts[port].pUart->callbacks[UartEvtDataRcvd](port, status, pBuffer);
     }
 
 END:                                     /* Tag to jump to in case of failure */
@@ -392,15 +398,3 @@ END:                                     /* Tag to jump to in case of failure */
     pUarts[port].pUart->isRxBusy = false;
 }
 
-/******************************************************************************/
-static Uart_t UART_getPortFromDmaChannel(Dma_t channel)
-{
-    Uart_t port = UART_MAX;
-    for (port = UART_START; port < UART_MAX; port++) {
-        if (pUarts[port].pDmaRx->channel == channel ||
-            pUarts[port].pDmaTx->channel == channel) {
-            return port;
-        }
-    }
-    return UART_MAX;
-}

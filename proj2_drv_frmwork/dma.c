@@ -51,24 +51,6 @@
 static DmaData_t *pDMAs = NULL;                      /**< pointer to DMA data */
 
 /* Private function prototypes -----------------------------------------------*/
-
-/**
- * @brief   Calculate the ISR register address for a given DMA channel
- *
- * STM placed the ISR registers into 2 separate HISR and LISR registers for all
- * the streams. This makes it difficult to figure out at compile (or even
- * runtime) which register to check/clear. This function attempts to address
- * this problem. It is unfortunately done at runtime. A better implementation
- * would convert this to a macro that figures all this out at compile time. It
- * SHOULD be possible.
- *
- * @return  uint32_t memory address of either HISR or LISR reg for DMAx
- * @retval
- *
- */
-//static uint32_t LL_DMA_calcStreamIsrRegAddr(
-//        Dma_t channel                      /**< [in] which system DMA channel */
-//);
 /* Public and Exported functions ---------------------------------------------*/
 
 /******************************************************************************/
@@ -156,13 +138,20 @@ void DMA_start(Dma_t channel)
     LL_DMA_DisableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
     LL_DMA_DisableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
 
-//    if (pDMAs[channel].pDynData->callbacks[DmaTransferCompleteInt]) {
-        LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
-//    }
+    /* We want to always enable the Transfer Complete interrupt requests so that
+     * at least our flags get set/cleared correctly. If a user happens to have
+     * a callback registered, it will get called. */
+    LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
 
-//    if (pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt]) {
-        LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
-//    }
+    /* We'll also enable the error interrupt request so we can handle any errors
+     * that may pop up regardless of whether user has a callback or not. If they
+     * do, we'll call it after doing our best to clean up. */
+    LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+
+    /* The rest of these interrupts we don't need to bother with unless the user
+     * has explicitly registered a callback. HalfComplete seems to always happen
+     * anyways for some reason and the ISR will just clear it. The FIFO error
+     * also happens but it doesn't seem to affect anything. */
     if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
         LL_DMA_EnableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
     }
@@ -271,6 +260,12 @@ void DMA_getCurrentState(Dma_t channel, Buffer_t* pBuffer)
     pDMAs[channel].pDynData->buffer.len = LL_DMA_GetDataLength(
             pDMAs[channel].base, pDMAs[channel].stream);
     *pBuffer = pDMAs[channel].pDynData->buffer;
+}
+
+/******************************************************************************/
+uint32_t DMA_getCurrentLength(Dma_t channel)
+{
+    return(LL_DMA_GetDataLength(pDMAs[channel].base, pDMAs[channel].stream));
 }
 
 /******************************************************************************/
