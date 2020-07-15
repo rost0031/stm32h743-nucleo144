@@ -87,19 +87,14 @@ Error_t BSP_init(void)
     /* Now that the clocks are enabled, we can initialize our hardware by
      * calling into the drivers */
 //    BTN_init(BTN_USER1);
-//    LED_init(LED1);
-//    LED_init(LED2);
-//    LED_init(LED3);
+    LED_init(LED1);
+    LED_init(LED2);
+    LED_init(LED3);
 
     /* Configure the UARTs */
     if (ERR_NONE != (status = UART_init(UART_DBG))) {
         goto END;
     }
-
-//    if (ERR_NONE != (status = UART_start(UART_DBG))) {
-//        goto END;
-//    }
-
 
 END:                                     /* Tag to jump to in case of failure */
     return status;

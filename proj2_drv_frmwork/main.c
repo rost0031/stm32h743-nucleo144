@@ -8,6 +8,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "bsp.h"
+#include "led.h"
 #include "uart.h"
 #include <stdio.h>
 #include <string.h>
@@ -72,6 +73,7 @@ int main(void)
         while (1) {
 
             if (isRxDataRcvd) {
+                LED_on(LED1);
 
                 isRxDataRcvd = false;                     /* Clear local flag */
 
@@ -92,6 +94,7 @@ int main(void)
                 if (ERR_NONE != UART_recvDma(UART_DBG, bufRx.maxLen, bufRx.pData)) {
                     /* Not much we can do here for error handling/printing */
                 }
+                LED_off(LED1);
             }
         }
     }
