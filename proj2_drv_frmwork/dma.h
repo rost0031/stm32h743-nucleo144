@@ -156,6 +156,19 @@ void DMA_abortTransfer(
 );
 
 /**
+ * @brief   Get current DMA length
+ *
+ * This function can be called at any time to get how many bytes have been
+ * transferred by the specified DMA channel.
+ *
+ * @return  None
+ */
+uint32_t DMA_getCurrentLength(
+        Dma_t channel                      /**< [in] which system DMA channel */
+);
+
+
+/**
  * @brief   DMA interrupt service handler
  *
  * This function is an interrupt service handler for all DMA interrupts. The

@@ -76,16 +76,20 @@ int main(void)
                 isRxDataRcvd = false;                     /* Clear local flag */
 
                 /* Copy from reception to transmission buffer to print out */
+                memset(bufTx.pData, 0, bufTx.maxLen);
                 bufTx.len = snprintf(bufTx.pData, bufTx.maxLen,
-                        "Rcvd %d: %s\n", bufRx.len, bufRx.pData);
+                        "Rcvd %d:", bufRx.len);
+                memcpy(&bufTx.pData[bufTx.len], bufRx.pData, bufTx.maxLen - bufRx.len);
+                bufTx.len += bufRx.len;
+
                 bufRx.len = 0;                  /* Clear the reception buffer */
 
-                /* Start a new reception */
-                if (ERR_NONE != UART_recvDma(UART_DBG, bufRx.maxLen, bufRx.pData)) {
+                if (ERR_NONE != UART_sendDma(UART_DBG, bufTx.len, bufTx.pData)) {
                     /* Not much we can do here for error handling/printing */
                 }
 
-                if (ERR_NONE != UART_sendDma(UART_DBG, bufTx.len, bufTx.pData)) {
+                /* Start a new reception */
+                if (ERR_NONE != UART_recvDma(UART_DBG, bufRx.maxLen, bufRx.pData)) {
                     /* Not much we can do here for error handling/printing */
                 }
             }

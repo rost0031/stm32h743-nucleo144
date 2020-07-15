@@ -116,7 +116,7 @@ Error_t UART_init(Uart_t port)
         LL_USART_EnableDMAReq_RX(pUarts[port].pUart->base);
     }
 
-    LL_USART_EnableIT_IDLE(pUarts[port].pUart->base);/* Enable IDLE interrupt */
+//    LL_USART_EnableIT_IDLE(pUarts[port].pUart->base);/* Enable IDLE interrupt */
 
     LL_USART_Enable( pUarts[port].pUart->base );               /* Enable UART */
 
@@ -154,7 +154,7 @@ Error_t UART_start(Uart_t port)
      * functions user calls. Problem for another day. */
 
     /* Enable the interrupts we care about */
-    LL_USART_EnableIT_IDLE(pUarts[port].pUart->base);
+//    LL_USART_EnableIT_IDLE(pUarts[port].pUart->base);
 
     /* Enable error interrupts */
     LL_USART_EnableIT_ERROR(pUarts[port].pUart->base);
@@ -289,9 +289,12 @@ Error_t UART_recvDma(Uart_t port, uint16_t dataLen, uint8_t* const pData)
 
     pUarts[port].pUart->isRxBusy = true;
 
+    /* Enable IDLE interrupt for RX only */
+    LL_USART_EnableIT_IDLE(pUarts[port].pUart->base);
+
     /* Register a private UART callback with DMA channel to notify UART driver
      * when DMA completes the transfer */
-    DMA_registerCallback(pUarts[port].pDmaTx->channel,
+    DMA_registerCallback(pUarts[port].pDmaRx->channel,
             DmaTransferCompleteInt, UART_callbackDmaRxDone);
 
     if (ERR_NONE != (status = DMA_startTransfer(pUarts[port].pDmaRx->channel, pData, dataLen))) {
@@ -320,19 +323,16 @@ void UART_isr(Uart_t port)
 
     if (LL_USART_IsEnabledIT_IDLE(pUarts[port].pUart->base) &&
         LL_USART_IsActiveFlag_IDLE(pUarts[port].pUart->base)) {
+
         /* IDLE interrupt was enabled and occurred */
-
-        /* Get how many bytes DMA has done so far and subtract from total
-         * buffer size to get how many bytes are in the buffer currently */
-        pUarts[port].pUart->bufferRx.len = pUarts[port].pUart->bufferRx.maxLen
-                - DMA_getCurrentLength(pUarts[port].pDmaRx->channel);
-
         DMA_abortTransfer(pUarts[port].pDmaRx->channel);
 
-        if (pUarts[port].pUart->callbacks[UartEvtDataRcvd]) {
-            pUarts[port].pUart->callbacks[UartEvtDataRcvd](port, ERR_NONE,
-                    &(pUarts[port].pUart->bufferRx));
-        }
+        /* Don't call any callbacks here. When we disable the DMA stream, it
+         * will automatically post a Transfer Complete DMA interrupt and we'll
+         * let the DMA ISR handle it as if it normally completed. */
+
+        LL_USART_ClearFlag_IDLE(pUarts[port].pUart->base);
+        LL_USART_DisableIT_IDLE(pUarts[port].pUart->base);
     }
 
     pUarts[port].pUart->isRxBusy = false;

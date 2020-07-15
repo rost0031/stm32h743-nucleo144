@@ -138,30 +138,6 @@ void DMA_start(Dma_t channel)
     LL_DMA_DisableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
     LL_DMA_DisableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
 
-    /* We want to always enable the Transfer Complete interrupt requests so that
-     * at least our flags get set/cleared correctly. If a user happens to have
-     * a callback registered, it will get called. */
-    LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
-
-    /* We'll also enable the error interrupt request so we can handle any errors
-     * that may pop up regardless of whether user has a callback or not. If they
-     * do, we'll call it after doing our best to clean up. */
-    LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
-
-    /* The rest of these interrupts we don't need to bother with unless the user
-     * has explicitly registered a callback. HalfComplete seems to always happen
-     * anyways for some reason and the ISR will just clear it. The FIFO error
-     * also happens but it doesn't seem to affect anything. */
-    if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
-        LL_DMA_EnableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
-    }
-    if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
-        LL_DMA_EnableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
-    }
-    if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
-        LL_DMA_EnableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
-    }
-
     NVIC_SetPriority(pDMAs[channel].irq, pDMAs[channel].prio);
     NVIC_EnableIRQ(pDMAs[channel].irq);
 
@@ -237,6 +213,32 @@ Error_t DMA_startTransfer(Dma_t channel, uint8_t* const pData, uint16_t len)
     LL_DMA_SetMemoryAddress(pDMAs[channel].base, pDMAs[channel].stream, (uint32_t)pData);
     LL_DMA_SetDataLength(pDMAs[channel].base, pDMAs[channel].stream, len);
 
+    /* We want to always enable the Transfer Complete interrupt requests so that
+     * at least our flags get set/cleared correctly. If a user happens to have
+     * a callback registered, it will get called. */
+    LL_DMA_EnableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
+
+    /* We'll also enable the error interrupt request so we can handle any errors
+     * that may pop up regardless of whether user has a callback or not. If they
+     * do, we'll call it after doing our best to clean up. */
+    LL_DMA_EnableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
+
+#if 0   /* These aren't being used so we can just not handle them for now */
+    /* The rest of these interrupts we don't need to bother with unless the user
+     * has explicitly registered a callback. HalfComplete seems to always happen
+     * anyways for some reason and the ISR will just clear it. The FIFO error
+     * also happens but it doesn't seem to affect anything. */
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
+        LL_DMA_EnableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
+        LL_DMA_EnableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+    if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
+        LL_DMA_EnableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
+    }
+#endif
+
     /* Start the DMA transfer */
     LL_DMA_EnableStream(pDMAs[channel].base, pDMAs[channel].stream);
 
@@ -271,9 +273,11 @@ uint32_t DMA_getCurrentLength(Dma_t channel)
 /******************************************************************************/
 void DMA_isr(Dma_t channel)
 {
+
     /* Get number of bytes that haven't been transferred. The rest of the data
      * about the transfer is already in the structure */
-    pDMAs[channel].pDynData->buffer.len = LL_DMA_GetDataLength(pDMAs[channel].base, pDMAs[channel].stream);
+    pDMAs[channel].pDynData->buffer.len = pDMAs[channel].pDynData->buffer.maxLen
+            - LL_DMA_GetDataLength(pDMAs[channel].base, pDMAs[channel].stream);
 
     /* Check all the possible interrupts.
      * If set and callback exists, call it.
@@ -286,43 +290,56 @@ void DMA_isr(Dma_t channel)
                     ERR_NONE, &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TCIF0_4 << pDMAs[channel].streamRegBitShift));
+        LL_DMA_DisableIT_TC(pDMAs[channel].base, pDMAs[channel].stream);
     }
 
     /* Transfer Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+
+
         if (pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferErrorInt](channel,
                     ERR_HW_DMA_TRANSFER, &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_TEIF0_4 << pDMAs[channel].streamRegBitShift));
+        LL_DMA_DisableIT_TE(pDMAs[channel].base, pDMAs[channel].stream);
     }
 
-#if 0
+#if 0   /* These aren't being used so we can just not handle them for now */
     /* Transfer Half Complete? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift)) {
+
+
         if (pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferHalfCompleteInt](channel,
                     ERR_NONE,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_HTIF0_4 << pDMAs[channel].streamRegBitShift));
+        LL_DMA_DisableIT_HT(pDMAs[channel].base, pDMAs[channel].stream);
     }
 
     /* Transfer Direct Mode Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+
+
         if (pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferDirectErrorInt](channel,
                     ERR_HW_DMA_TRANSFER,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_DMEIF0_4 << pDMAs[channel].streamRegBitShift));
+        LL_DMA_DisableIT_DME(pDMAs[channel].base, pDMAs[channel].stream);
     }
 
     /* Transfer FIFO Error? */
     if (pDMAs[channel].baseRegs->ISR & (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift)) {
+
+
         if (pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt]) {
             pDMAs[channel].pDynData->callbacks[DmaTransferFifoErrorInt](channel,
                     ERR_HW_DMA_TRANSFER,  &(pDMAs[channel].pDynData->buffer));
         }
         WRITE_REG(pDMAs[channel].baseRegs->IFCR, (DMA_FLAG_FEIF0_4 << pDMAs[channel].streamRegBitShift));
+        LL_DMA_DisableIT_FE(pDMAs[channel].base, pDMAs[channel].stream);
     }
 #endif
 
